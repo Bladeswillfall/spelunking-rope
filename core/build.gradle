@@ -1,0 +1,5 @@
+apply plugin: "java-library"
+
+base {
+    archivesName = "${rootProject.archives_base_name}-core"
+}

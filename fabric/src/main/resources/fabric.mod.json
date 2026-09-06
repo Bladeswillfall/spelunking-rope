@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "spelunking_rope",
+  "version": "${version}",
+  "name": "Spelunking Rope",
+  "description": "Ropework, rappelling, traversal, and winching infrastructure for hostile and vertical environments.",
+  "authors": ["Bladeswillfall"],
+  "contact": {
+    "sources": "https://github.com/Bladeswillfall/spelunking-rope"
+  },
+  "license": "All Rights Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "io.github.bladeswillfall.spelunkingrope.fabric.SpelunkingRopeFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=17"
+  }
+}

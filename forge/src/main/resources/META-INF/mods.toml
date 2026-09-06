@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[${forge_version},)"
+license = "All Rights Reserved"
+issueTrackerURL = "https://github.com/Bladeswillfall/spelunking-rope/issues"
+
+[[mods]]
+modId = "spelunking_rope"
+version = "${version}"
+displayName = "Spelunking Rope"
+authors = "Bladeswillfall"
+displayURL = "https://github.com/Bladeswillfall/spelunking-rope"
+description = '''
+Ropework, rappelling, traversal, and winching infrastructure for hostile and vertical environments.
+'''
+
+[[dependencies.spelunking_rope]]
+modId = "forge"
+mandatory = true
+versionRange = "[${forge_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.spelunking_rope]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[${minecraft_version},1.21)"
+ordering = "NONE"
+side = "BOTH"

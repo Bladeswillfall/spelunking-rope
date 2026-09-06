@@ -1,0 +1,85 @@
+name: Bootstrap verification
+
+on:
+  push:
+    branches:
+      - m0/bootstrap-multiloader
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Build all modules
+        run: gradle build --stacktrace
+      - name: Verify architecture boundaries
+        shell: bash
+        run: |
+          if grep -R -E 'net\.minecraft|net\.fabricmc|net\.minecraftforge|dev\.architectury' core/src 2>/dev/null; then
+            echo 'core must remain pure Java'
+            exit 1
+          fi
+          if grep -R -E 'net\.fabricmc|net\.minecraftforge' common/src 2>/dev/null; then
+            echo 'common must not import loader APIs'
+            exit 1
+          fi
+          gradle :core:dependencies --configuration compileClasspath > core-dependencies.txt
+          if grep -E 'minecraft|fabric|forge|architectury' core-dependencies.txt; then
+            echo 'core compile classpath contains a forbidden platform dependency'
+            exit 1
+          fi
+      - name: Verify loader metadata
+        shell: bash
+        run: |
+          FABRIC_JAR=$(find fabric/build/libs -maxdepth 1 -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          FORGE_JAR=$(find forge/build/libs -maxdepth 1 -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
+          test -n "$FABRIC_JAR"
+          test -n "$FORGE_JAR"
+          unzip -p "$FABRIC_JAR" fabric.mod.json > /tmp/fabric.mod.json
+          unzip -p "$FORGE_JAR" META-INF/mods.toml > /tmp/mods.toml
+          grep -q '"id": "spelunking_rope"' /tmp/fabric.mod.json
+          grep -q '"version": "0.1.0-dev"' /tmp/fabric.mod.json
+          grep -q 'modId = "spelunking_rope"' /tmp/mods.toml
+          grep -q 'version = "0.1.0-dev"' /tmp/mods.toml
+
+  server:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, forge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Boot ${{ matrix.loader }} dedicated server
+        shell: bash
+        env:
+          LOADER: ${{ matrix.loader }}
+        run: |
+          mkdir -p "$LOADER/run"
+          echo 'eula=true' > "$LOADER/run/eula.txt"
+          set +e
+          timeout 180s gradle ":$LOADER:runServer" --no-daemon > "$LOADER-server.log" 2>&1
+          STATUS=$?
+          set -e
+          cat "$LOADER-server.log"
+          if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 124 ]; then
+            exit "$STATUS"
+          fi
+          grep -q 'Spelunking Rope initialized' "$LOADER-server.log"
+          grep -q 'Done (' "$LOADER-server.log"

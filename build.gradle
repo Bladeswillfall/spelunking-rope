@@ -1,0 +1,48 @@
+plugins {
+    id "architectury-plugin" version "3.4.160"
+    id "dev.architectury.loom" version "1.7.435" apply false
+    id "com.github.johnrengelman.shadow" version "8.1.1" apply false
+}
+
+architectury {
+    minecraft = minecraft_version
+}
+
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: "java"
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+        withSourcesJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+        options.release = 17
+    }
+}
+
+configure([project(":common"), project(":fabric"), project(":forge")]) {
+    apply plugin: "architectury-plugin"
+    apply plugin: "dev.architectury.loom"
+
+    loom {
+        silentMojangMappingsLicense()
+    }
+
+    dependencies {
+        minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+        mappings loom.officialMojangMappings()
+    }
+}
