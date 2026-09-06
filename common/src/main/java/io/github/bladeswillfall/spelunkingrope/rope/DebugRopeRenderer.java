@@ -7,6 +7,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 public final class DebugRopeRenderer {
@@ -37,6 +38,7 @@ public final class DebugRopeRenderer {
         Vec3 cameraPosition = camera.getPosition();
         PoseStack.Pose pose = poseStack.last();
         Matrix4f matrix = pose.pose();
+        Matrix3f normalMatrix = pose.normal();
 
         for (int slot = 0; slot < spanCount; slot++) {
             int spanOffset = slot * coordinatesPerSpan;
@@ -56,11 +58,11 @@ public final class DebugRopeRenderer {
 
                 consumer.vertex(matrix, startX, startY, startZ)
                         .color(RED, GREEN, BLUE, ALPHA)
-                        .normal(pose, normalX, normalY, normalZ)
+                        .normal(normalMatrix, normalX, normalY, normalZ)
                         .endVertex();
                 consumer.vertex(matrix, endX, endY, endZ)
                         .color(RED, GREEN, BLUE, ALPHA)
-                        .normal(pose, normalX, normalY, normalZ)
+                        .normal(normalMatrix, normalX, normalY, normalZ)
                         .endVertex();
             }
         }
