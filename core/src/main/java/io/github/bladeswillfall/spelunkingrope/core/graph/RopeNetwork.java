@@ -13,6 +13,9 @@ public final class RopeNetwork {
     private final Map<UUID, RopeSpan> spans = new LinkedHashMap<>();
     private final Map<UUID, LinkedHashSet<UUID>> incidentSpanIds = new LinkedHashMap<>();
 
+    public record SplitResult(RopeNode insertedNode, RopeSpan startSpan, RopeSpan endSpan) {
+    }
+
     public RopeNode addNode() {
         return addNode(UUID.randomUUID());
     }
@@ -73,6 +76,69 @@ public final class RopeNetwork {
         return true;
     }
 
+    public SplitResult splitSpan(UUID spanId, UUID insertedNodeId, double startLength) {
+        RopeSpan original = requireKnownSpan(spanId);
+        Objects.requireNonNull(insertedNodeId, "insertedNodeId");
+        if (nodes.containsKey(insertedNodeId)) {
+            throw new IllegalArgumentException("Duplicate rope node: " + insertedNodeId);
+        }
+        if (!Double.isFinite(startLength) || startLength <= 0.0 || startLength >= original.allocatedLength()) {
+            throw new IllegalArgumentException("startLength must be finite, positive, and shorter than the original span");
+        }
+
+        double endLength = original.allocatedLength() - startLength;
+        if (!Double.isFinite(endLength) || endLength <= 0.0) {
+            throw new IllegalArgumentException("remaining split length must be finite and positive");
+        }
+
+        UUID endSpanId;
+        do {
+            endSpanId = UUID.randomUUID();
+        } while (spans.containsKey(endSpanId));
+
+        disconnect(original.id());
+        RopeNode insertedNode = addNode(insertedNodeId);
+        RopeSpan startSpan = connect(
+                original.id(),
+                original.startNodeId(),
+                insertedNode.id(),
+                startLength
+        );
+        RopeSpan endSpan = connect(
+                endSpanId,
+                insertedNode.id(),
+                original.endNodeId(),
+                endLength
+        );
+        return new SplitResult(insertedNode, startSpan, endSpan);
+    }
+
+    public RopeSpan joinNode(UUID nodeId) {
+        requireKnownNode(nodeId);
+        LinkedHashSet<UUID> incident = incidentSpanIds.get(nodeId);
+        if (incident.size() != 2) {
+            throw new IllegalArgumentException("A joined rope node must have exactly two incident spans");
+        }
+
+        var iterator = incident.iterator();
+        RopeSpan first = spans.get(iterator.next());
+        RopeSpan second = spans.get(iterator.next());
+        UUID startNodeId = otherNodeId(first, nodeId);
+        UUID endNodeId = otherNodeId(second, nodeId);
+        if (startNodeId.equals(endNodeId)) {
+            throw new IllegalArgumentException("Joining this node would create a self-loop span");
+        }
+
+        double joinedLength = first.allocatedLength() + second.allocatedLength();
+        if (!Double.isFinite(joinedLength) || joinedLength <= 0.0) {
+            throw new IllegalArgumentException("joined allocated length must be finite and positive");
+        }
+
+        UUID retainedSpanId = first.id();
+        removeNode(nodeId);
+        return connect(retainedSpanId, startNodeId, endNodeId, joinedLength);
+    }
+
     public void forEachIncidentSpanId(UUID nodeId, Consumer<UUID> action) {
         requireKnownNode(nodeId);
         Objects.requireNonNull(action, "action");
@@ -87,10 +153,22 @@ public final class RopeNetwork {
         return List.copyOf(spans.values());
     }
 
+    private RopeSpan requireKnownSpan(UUID spanId) {
+        RopeSpan span = spans.get(Objects.requireNonNull(spanId, "spanId"));
+        if (span == null) {
+            throw new IllegalArgumentException("Unknown rope span: " + spanId);
+        }
+        return span;
+    }
+
     private void requireKnownNode(UUID nodeId) {
         Objects.requireNonNull(nodeId, "nodeId");
         if (!nodes.containsKey(nodeId)) {
             throw new IllegalArgumentException("Unknown rope node: " + nodeId);
         }
+    }
+
+    private static UUID otherNodeId(RopeSpan span, UUID nodeId) {
+        return span.startNodeId().equals(nodeId) ? span.endNodeId() : span.startNodeId();
     }
 }
