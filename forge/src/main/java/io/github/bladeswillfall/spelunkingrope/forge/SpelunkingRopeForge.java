@@ -7,5 +7,6 @@ import net.minecraftforge.fml.common.Mod;
 public final class SpelunkingRopeForge {
     public SpelunkingRopeForge() {
         SpelunkingRope.init();
+        ForgeRopeNetworking.init();
     }
 }

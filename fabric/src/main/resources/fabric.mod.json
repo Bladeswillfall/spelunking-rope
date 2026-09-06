@@ -13,10 +13,14 @@
   "entrypoints": {
     "main": [
       "io.github.bladeswillfall.spelunkingrope.fabric.SpelunkingRopeFabric"
+    ],
+    "client": [
+      "io.github.bladeswillfall.spelunkingrope.fabric.SpelunkingRopeFabricClient"
     ]
   },
   "depends": {
     "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
     "minecraft": "~${minecraft_version}",
     "java": ">=17"
   }

@@ -7,9 +7,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,17 +90,29 @@ public final class FixedRopeSavedData extends SavedData {
         return network.spans();
     }
 
+    public FixedRopeSnapshot snapshot(ResourceLocation dimension) {
+        List<RopeSpan> currentSpans = network.spans();
+        List<FixedRopeSnapshot.Span> snapshotSpans = new ArrayList<>(currentSpans.size());
+        for (RopeSpan span : currentSpans) {
+            BlockAttachment start = requireAttachment(span.startNodeId());
+            BlockAttachment end = requireAttachment(span.endNodeId());
+            snapshotSpans.add(new FixedRopeSnapshot.Span(
+                    span.id(),
+                    start,
+                    end,
+                    span.allocatedLength()
+            ));
+        }
+        return new FixedRopeSnapshot(dimension, snapshotSpans);
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.putInt(TAG_SCHEMA_VERSION, SCHEMA_VERSION);
 
         ListTag nodes = new ListTag();
         for (RopeNode node : network.nodes()) {
-            BlockAttachment attachment = attachments.get(node.id());
-            if (attachment == null) {
-                throw new IllegalStateException("Missing attachment for rope node " + node.id());
-            }
-
+            BlockAttachment attachment = requireAttachment(node.id());
             CompoundTag nodeTag = new CompoundTag();
             nodeTag.putUUID(TAG_ID, node.id());
             nodeTag.putInt(TAG_BLOCK_X, attachment.blockPos().getX());
@@ -159,5 +173,13 @@ public final class FixedRopeSavedData extends SavedData {
             );
         }
         return data;
+    }
+
+    private BlockAttachment requireAttachment(UUID nodeId) {
+        BlockAttachment attachment = attachments.get(nodeId);
+        if (attachment == null) {
+            throw new IllegalStateException("Missing attachment for rope node " + nodeId);
+        }
+        return attachment;
     }
 }
