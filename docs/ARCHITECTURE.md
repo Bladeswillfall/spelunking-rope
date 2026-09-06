@@ -55,8 +55,7 @@ RopeNetwork
     ├── start node
     ├── end node
     ├── allocated length
-    ├── material key
-    └── sampled curve
+    └── material key
 ```
 
 ### `common`
@@ -122,6 +121,19 @@ PlatformConfig
 ```
 
 Avoid wrapping stable vanilla concepts merely for abstraction's sake. We explicitly do **not** want project versions of `Block`, `Item`, `Player`, `Level`, or `Vec3`.
+
+## Runtime performance model
+
+Persistent/topological rope state and hot derived geometry are separate concerns.
+
+- UUID-backed nodes/spans are stable identity and save/network state, not the hot simulation layout.
+- Sampled paths are derived runtime data and must not live in the persistent graph model.
+- Static spans have zero per-tick geometry work; endpoint/length changes mark only affected spans dirty.
+- Hot path geometry uses reusable primitive buffers rather than one object per sample.
+- Clients reconstruct ordinary rope curves from authoritative endpoints/length instead of receiving sampled point lists.
+- Client and server runtime managers remain separate; shared block/entity ticks must not execute side-specific rope logic.
+- Dense integer-indexed runtime storage may be introduced when moving endpoints/traversal justify it; UUID map lookups stay off hot inner loops.
+- Multithreading is deferred until profiling shows dirty-geometry work is large enough to repay synchronization/task overhead.
 
 ## Multi-version strategy
 
