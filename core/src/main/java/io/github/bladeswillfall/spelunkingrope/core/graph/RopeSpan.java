@@ -12,8 +12,4 @@ public record RopeSpan(UUID id, UUID startNodeId, UUID endNodeId) {
             throw new IllegalArgumentException("A rope span must connect two different nodes");
         }
     }
-
-    public boolean touches(UUID nodeId) {
-        return startNodeId.equals(nodeId) || endNodeId.equals(nodeId);
-    }
 }
