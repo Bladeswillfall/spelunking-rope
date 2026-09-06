@@ -42,6 +42,7 @@ public final class CatenarySampler {
         }
         if (horizontal <= tolerance || ropeLength - distance <= tolerance) {
             sampleLine(x0, y0, z0, dx, dy, dz, segments, out);
+            writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out);
             return;
         }
 
@@ -74,13 +75,7 @@ public final class CatenarySampler {
             z += stepZ;
         }
 
-        out[0] = x0;
-        out[1] = y0;
-        out[2] = z0;
-        int last = segments * 3;
-        out[last] = x1;
-        out[last + 1] = y1;
-        out[last + 2] = z1;
+        writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out);
     }
 
     private static void sampleLine(
@@ -105,6 +100,21 @@ public final class CatenarySampler {
             y += stepY;
             z += stepZ;
         }
+    }
+
+    private static void writeEndpoints(
+            double x0, double y0, double z0,
+            double x1, double y1, double z1,
+            int segments,
+            double[] out
+    ) {
+        out[0] = x0;
+        out[1] = y0;
+        out[2] = z0;
+        int last = segments * 3;
+        out[last] = x1;
+        out[last + 1] = y1;
+        out[last + 2] = z1;
     }
 
     private static double solveDimensionless(double ratio) {
