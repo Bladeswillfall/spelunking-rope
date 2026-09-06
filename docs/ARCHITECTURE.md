@@ -127,13 +127,16 @@ Avoid wrapping stable vanilla concepts merely for abstraction's sake. We explici
 Persistent/topological rope state and hot derived geometry are separate concerns.
 
 - UUID-backed nodes/spans are stable identity and save/network state, not the hot simulation layout.
-- Sampled paths are derived runtime data and must not live in the persistent graph model.
-- Static spans have zero per-tick geometry work; endpoint/length changes mark only affected spans dirty.
-- Hot path geometry uses reusable primitive buffers rather than one object per sample.
+- `DenseRopeRuntime` maps stable span UUIDs to dense integer slots. UUID/map lookup stays on mutation/control paths rather than geometry inner loops.
+- Endpoint coordinates and allocated length are packed into primitive runtime storage; sampled geometry for all active spans lives in one contiguous primitive buffer.
+- Static/clean spans are effectively asleep. They are absent from the dirty queue and incur zero catenary recomputation work.
+- Endpoint/length changes enqueue a dense slot at most once. Geometry work is proportional to the number of changed spans, not total rope count.
+- Dense-slot deletion uses swap-remove and repairs the moved UUID/dirty-queue indexes rather than leaving holes or compacting the whole runtime.
+- `CatenarySampler` writes directly into a caller-selected slice of the shared geometry buffer, avoiding temporary per-span sample arrays and copies.
 - Clients reconstruct ordinary rope curves from authoritative endpoints/length instead of receiving sampled point lists.
 - Client and server runtime managers remain separate; shared block/entity ticks must not execute side-specific rope logic.
-- Dense integer-indexed runtime storage may be introduced when moving endpoints/traversal justify it; UUID map lookups stay off hot inner loops.
-- Multithreading is deferred until profiling shows dirty-geometry work is large enough to repay synchronization/task overhead.
+- CI runs an observational 1,000/10,000-span benchmark (`:core:benchmarkRopeRuntime`) to catch major regressions and provide baselines. Timing is not a pass/fail threshold because hosted-runner variance is substantial.
+- Multithreading remains deferred until profiling shows dirty-geometry work is large enough to repay synchronization/task overhead.
 
 ## Multi-version strategy
 
