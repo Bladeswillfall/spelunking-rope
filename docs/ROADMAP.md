@@ -11,7 +11,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Define server-authoritative networking policy
 - [x] Define persistent-data versioning requirement
 - [x] Select build tooling / mappings strategy
-- [ ] Create compilable Fabric 1.20.1 + Forge 1.20.1 skeleton
+- [x] Create compilable Fabric 1.20.1 + Forge 1.20.1 skeleton
 - [ ] Set up CI matrix
 
 ## M1 — Rope engine
