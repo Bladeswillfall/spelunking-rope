@@ -39,10 +39,10 @@ jobs:
       - name: Verify loader metadata
         shell: bash
         run: |
-          FABRIC_JAR=$(find fabric/build/libs -maxdepth 1 -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
-          FORGE_JAR=$(find forge/build/libs -maxdepth 1 -name '*.jar' ! -name '*sources*' ! -name '*dev*' | head -n 1)
-          test -n "$FABRIC_JAR"
-          test -n "$FORGE_JAR"
+          FABRIC_JAR="fabric/build/libs/spelunking-rope-fabric-0.1.0-dev.jar"
+          FORGE_JAR="forge/build/libs/spelunking-rope-forge-0.1.0-dev.jar"
+          test -f "$FABRIC_JAR"
+          test -f "$FORGE_JAR"
           unzip -p "$FABRIC_JAR" fabric.mod.json > /tmp/fabric.mod.json
           unzip -p "$FORGE_JAR" META-INF/mods.toml > /tmp/mods.toml
           grep -q '"id": "spelunking_rope"' /tmp/fabric.mod.json
