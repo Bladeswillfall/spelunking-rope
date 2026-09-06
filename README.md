@@ -40,6 +40,39 @@ The system is spelunking-first, but its primitives should also fit industrial, e
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the detailed module design.
 
+## Development
+
+The Minecraft 1.20.1 line uses Java 17 and Gradle 8.8.
+
+Build all modules:
+
+```bash
+gradle build
+```
+
+Launch development clients:
+
+```bash
+gradle :fabric:runClient
+gradle :forge:runClient
+```
+
+Launch development dedicated servers:
+
+```bash
+gradle :fabric:runServer
+gradle :forge:runServer
+```
+
+Minecraft's EULA must be accepted in the corresponding loader run directory before a dedicated server can complete startup.
+
+Release-shaped development jars are produced as:
+
+```text
+fabric/build/libs/spelunking-rope-fabric-<version>.jar
+forge/build/libs/spelunking-rope-forge-<version>.jar
+```
+
 ## Art direction
 
 Development starts with vanilla-compatible placeholders where useful (lead-like rope, tripwire-hook-like piton silhouette), but final geometry should be established before mechanics depend on incorrect attachment positions.
@@ -50,7 +83,7 @@ See [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).
 
 ## Project status
 
-**Foundation / pre-code.** Architecture, scope, terminology, module boundaries, and visual rules are being established before gameplay implementation begins.
+**Foundation bootstrap.** The shared Fabric/Forge 1.20.1 project now compiles and the dedicated-server bootstrap is continuously smoke-tested. Gameplay implementation has not started yet.
 
 ## Repository modules
 

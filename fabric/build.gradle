@@ -1,0 +1,70 @@
+apply plugin: "com.github.johnrengelman.shadow"
+
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+
+base {
+    archivesName = "${rootProject.archives_base_name}-fabric"
+}
+
+loom {
+    runs {
+        server {
+            server()
+            runDir "run"
+        }
+    }
+}
+
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentFabric.extendsFrom common
+}
+
+dependencies {
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+
+    common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+    common(project(":core")) { transitive = false }
+
+    shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive = false }
+    shadowCommon(project(":core")) { transitive = false }
+}
+
+processResources {
+    Map<String, Object> properties = [
+        version: project.version,
+        minecraft_version: rootProject.minecraft_version,
+        fabric_loader_version: rootProject.fabric_loader_version
+    ]
+    inputs.properties(properties)
+    filesMatching("fabric.mod.json") {
+        expand properties
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = "dev-shadow"
+}
+
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier = null
+}
+
+jar {
+    archiveClassifier = "dev"
+}
+
+sourcesJar {
+    dependsOn project(":common").sourcesJar, project(":core").sourcesJar
+    from project(":common").sourcesJar.archiveFile.map { zipTree(it) }
+    from project(":core").sourcesJar.archiveFile.map { zipTree(it) }
+}

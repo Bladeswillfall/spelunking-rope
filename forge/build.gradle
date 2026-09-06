@@ -1,0 +1,70 @@
+apply plugin: "com.github.johnrengelman.shadow"
+
+architectury {
+    platformSetupLoomIde()
+    forge()
+}
+
+base {
+    archivesName = "${rootProject.archives_base_name}-forge"
+}
+
+loom {
+    runs {
+        server {
+            server()
+            runDir "run"
+        }
+    }
+}
+
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentForge.extendsFrom common
+}
+
+dependencies {
+    forge "net.minecraftforge:forge:${rootProject.minecraft_version}-${rootProject.forge_version}"
+
+    common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+    common(project(":core")) { transitive = false }
+
+    shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
+    shadowCommon(project(":core")) { transitive = false }
+}
+
+processResources {
+    Map<String, Object> properties = [
+        version: project.version,
+        minecraft_version: rootProject.minecraft_version,
+        forge_version: rootProject.forge_version.split("\\.")[0]
+    ]
+    inputs.properties(properties)
+    filesMatching("META-INF/mods.toml") {
+        expand properties
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = "dev-shadow"
+}
+
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier = null
+}
+
+jar {
+    archiveClassifier = "dev"
+}
+
+sourcesJar {
+    dependsOn project(":common").sourcesJar, project(":core").sourcesJar
+    from project(":common").sourcesJar.archiveFile.map { zipTree(it) }
+    from project(":core").sourcesJar.archiveFile.map { zipTree(it) }
+}

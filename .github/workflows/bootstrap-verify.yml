@@ -1,0 +1,143 @@
+name: Bootstrap verification
+
+on:
+  push:
+    branches:
+      - m0/bootstrap-multiloader
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+          cache-read-only: false
+      - name: Build all modules
+        run: gradle build --stacktrace
+      - name: Verify architecture boundaries
+        shell: bash
+        run: |
+          if grep -R -E 'net\.minecraft|net\.fabricmc|net\.minecraftforge|dev\.architectury' core/src 2>/dev/null; then
+            echo 'core must remain pure Java'
+            exit 1
+          fi
+          if grep -R -E 'net\.fabricmc|net\.minecraftforge' common/src 2>/dev/null; then
+            echo 'common must not import loader APIs'
+            exit 1
+          fi
+          gradle :core:dependencies --configuration compileClasspath > core-dependencies.txt
+          if grep -E 'minecraft|fabric|forge|architectury' core-dependencies.txt; then
+            echo 'core compile classpath contains a forbidden platform dependency'
+            exit 1
+          fi
+      - name: Verify loader metadata
+        shell: bash
+        run: |
+          FABRIC_JAR="fabric/build/libs/spelunking-rope-fabric-0.1.0-dev.jar"
+          FORGE_JAR="forge/build/libs/spelunking-rope-forge-0.1.0-dev.jar"
+          test -f "$FABRIC_JAR"
+          test -f "$FORGE_JAR"
+          unzip -p "$FABRIC_JAR" fabric.mod.json > /tmp/fabric.mod.json
+          unzip -p "$FORGE_JAR" META-INF/mods.toml > /tmp/mods.toml
+          grep -q '"id": "spelunking_rope"' /tmp/fabric.mod.json
+          grep -q '"version": "0.1.0-dev"' /tmp/fabric.mod.json
+          grep -q 'modId = "spelunking_rope"' /tmp/mods.toml
+          grep -q 'version = "0.1.0-dev"' /tmp/mods.toml
+
+  server:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, forge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Boot ${{ matrix.loader }} dedicated server
+        shell: bash
+        env:
+          LOADER: ${{ matrix.loader }}
+        run: |
+          LOG="$LOADER-server.log"
+          mkdir -p "$LOADER/run"
+          echo 'eula=true' > "$LOADER/run/eula.txt"
+
+          gradle ":$LOADER:runServer" --no-daemon > "$LOG" 2>&1 &
+          SERVER_PID=$!
+
+          READY=0
+          for _ in $(seq 1 240); do
+            if grep -q 'Done (' "$LOG" 2>/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          cat "$LOG"
+          kill "$SERVER_PID" 2>/dev/null || true
+          wait "$SERVER_PID" 2>/dev/null || true
+
+          test "$READY" -eq 1
+          grep -q 'Spelunking Rope initialized' "$LOG"
+
+  client:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, forge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Boot ${{ matrix.loader }} client
+        shell: bash
+        env:
+          LOADER: ${{ matrix.loader }}
+        run: |
+          LOG="$LOADER-client.log"
+          xvfb-run -a gradle ":$LOADER:runClient" --no-daemon > "$LOG" 2>&1 &
+          CLIENT_PID=$!
+
+          READY=0
+          for _ in $(seq 1 240); do
+            if grep -q 'Reloading ResourceManager' "$LOG" 2>/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          cat "$LOG"
+          kill "$CLIENT_PID" 2>/dev/null || true
+          wait "$CLIENT_PID" 2>/dev/null || true
+
+          test "$READY" -eq 1
+          grep -q 'Spelunking Rope initialized' "$LOG"
