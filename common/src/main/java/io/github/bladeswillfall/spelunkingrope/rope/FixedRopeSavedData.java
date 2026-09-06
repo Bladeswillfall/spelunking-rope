@@ -47,6 +47,22 @@ public final class FixedRopeSavedData extends SavedData {
         );
     }
 
+    public RopeSpan addRope(BlockAttachment start, BlockAttachment end, double allocatedLength) {
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(end, "end");
+        if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
+            throw new IllegalArgumentException("allocatedLength must be finite and positive");
+        }
+
+        RopeNode startNode = network.addNode();
+        RopeNode endNode = network.addNode();
+        attachments.put(startNode.id(), start);
+        attachments.put(endNode.id(), end);
+        RopeSpan span = network.connect(startNode.id(), endNode.id(), allocatedLength);
+        setDirty();
+        return span;
+    }
+
     public RopeNode addNode(BlockAttachment attachment) {
         Objects.requireNonNull(attachment, "attachment");
         RopeNode node = network.addNode();
