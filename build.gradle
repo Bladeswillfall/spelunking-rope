@@ -8,15 +8,6 @@ architectury {
     minecraft = minecraft_version
 }
 
-allprojects {
-    group = rootProject.maven_group
-    version = rootProject.mod_version
-
-    repositories {
-        mavenCentral()
-    }
-}
-
 subprojects {
     apply plugin: "java"
 
@@ -31,18 +22,30 @@ subprojects {
         options.encoding = "UTF-8"
         options.release = 17
     }
+
+    if (project.name != "core") {
+        apply plugin: "dev.architectury.loom"
+
+        loom {
+            silentMojangMappingsLicense()
+        }
+
+        dependencies {
+            minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+            mappings loom.officialMojangMappings()
+        }
+    }
 }
 
-configure([project(":common"), project(":fabric"), project(":forge")]) {
-    apply plugin: "dev.architectury.loom"
-    apply plugin: "architectury-plugin"
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
 
-    loom {
-        silentMojangMappingsLicense()
+    repositories {
+        mavenCentral()
     }
 
-    dependencies {
-        minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
-        mappings loom.officialMojangMappings()
+    if (project != rootProject && project.name != "core") {
+        apply plugin: "architectury-plugin"
     }
 }
