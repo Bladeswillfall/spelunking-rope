@@ -20,8 +20,19 @@ public final class CatenarySampler {
             int segments,
             double[] out
     ) {
+        sample(x0, y0, z0, x1, y1, z1, ropeLength, segments, out, 0);
+    }
+
+    public static void sample(
+            double x0, double y0, double z0,
+            double x1, double y1, double z1,
+            double ropeLength,
+            int segments,
+            double[] out,
+            int outOffset
+    ) {
         int required = coordinateCount(segments);
-        if (out.length < required) {
+        if (outOffset < 0 || outOffset > out.length || required > out.length - outOffset) {
             throw new IllegalArgumentException("output buffer is too small");
         }
         if (!Double.isFinite(x0) || !Double.isFinite(y0) || !Double.isFinite(z0)
@@ -41,8 +52,8 @@ public final class CatenarySampler {
             throw new IllegalArgumentException("rope length is shorter than endpoint distance");
         }
         if (horizontal <= tolerance || ropeLength - distance <= tolerance) {
-            sampleLine(x0, y0, z0, dx, dy, dz, segments, out);
-            writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out);
+            sampleLine(x0, y0, z0, dx, dy, dz, segments, out, outOffset);
+            writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out, outOffset);
             return;
         }
 
@@ -63,7 +74,7 @@ public final class CatenarySampler {
         double stepZ = dz / segments;
 
         for (int i = 0; i <= segments; i++) {
-            int offset = i * 3;
+            int offset = outOffset + i * 3;
             out[offset] = x;
             out[offset + 1] = y0 + a * (coshS - coshS0);
             out[offset + 2] = z;
@@ -75,14 +86,15 @@ public final class CatenarySampler {
             z += stepZ;
         }
 
-        writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out);
+        writeEndpoints(x0, y0, z0, x1, y1, z1, segments, out, outOffset);
     }
 
     private static void sampleLine(
             double x0, double y0, double z0,
             double dx, double dy, double dz,
             int segments,
-            double[] out
+            double[] out,
+            int outOffset
     ) {
         double x = x0;
         double y = y0;
@@ -92,7 +104,7 @@ public final class CatenarySampler {
         double stepZ = dz / segments;
 
         for (int i = 0; i <= segments; i++) {
-            int offset = i * 3;
+            int offset = outOffset + i * 3;
             out[offset] = x;
             out[offset + 1] = y;
             out[offset + 2] = z;
@@ -106,12 +118,13 @@ public final class CatenarySampler {
             double x0, double y0, double z0,
             double x1, double y1, double z1,
             int segments,
-            double[] out
+            double[] out,
+            int outOffset
     ) {
-        out[0] = x0;
-        out[1] = y0;
-        out[2] = z0;
-        int last = segments * 3;
+        out[outOffset] = x0;
+        out[outOffset + 1] = y0;
+        out[outOffset + 2] = z0;
+        int last = outOffset + segments * 3;
         out[last] = x1;
         out[last + 1] = y1;
         out[last + 2] = z1;
