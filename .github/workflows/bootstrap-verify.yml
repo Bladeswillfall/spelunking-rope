@@ -59,6 +59,8 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Test shared Minecraft code
         run: gradle :common:test --stacktrace
+      - name: Benchmark fixed-rope snapshot
+        run: gradle :common:benchmarkRopeSnapshot
 
   fabric:
     runs-on: ubuntu-latest

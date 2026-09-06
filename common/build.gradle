@@ -14,3 +14,9 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+tasks.register("benchmarkRopeSnapshot", JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass.set("io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshotBenchmark")
+}

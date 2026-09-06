@@ -7,5 +7,6 @@ public final class SpelunkingRopeFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         SpelunkingRope.init();
+        FabricRopeNetworking.init();
     }
 }
