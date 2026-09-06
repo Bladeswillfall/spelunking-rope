@@ -3,3 +3,11 @@ apply plugin: "java-library"
 base {
     archivesName = "${rootProject.archives_base_name}-core"
 }
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+}
+
+test {
+    useJUnitPlatform()
+}
