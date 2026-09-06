@@ -2,6 +2,8 @@ package io.github.bladeswillfall.spelunkingrope.core.graph;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,10 +36,12 @@ class RopeNetworkTest {
 
         assertThrows(IllegalArgumentException.class, () -> network.connect(node.id(), UUID.randomUUID()));
         assertThrows(IllegalArgumentException.class, () -> network.connect(node.id(), node.id()));
+        assertThrows(IllegalArgumentException.class,
+                () -> network.forEachIncidentSpanId(UUID.randomUUID(), ignored -> { }));
     }
 
     @Test
-    void removingNodeRemovesIncidentSpans() {
+    void removingNodeRemovesIncidentSpansAndCleansIndex() {
         RopeNetwork network = new RopeNetwork();
         RopeNode first = network.addNode();
         RopeNode middle = network.addNode();
@@ -50,7 +54,26 @@ class RopeNetworkTest {
         assertEquals(2, network.nodes().size());
         assertEquals(1, network.spans().size());
         assertEquals(surviving.id(), network.spans().get(0).id());
+        assertEquals(Set.of(surviving.id()), incidentIds(network, first.id()));
+        assertEquals(Set.of(surviving.id()), incidentIds(network, last.id()));
         assertFalse(network.removeNode(middle.id()));
+    }
+
+    @Test
+    void incidentIndexTracksParallelSpansAndDisconnects() {
+        RopeNetwork network = new RopeNetwork();
+        RopeNode first = network.addNode();
+        RopeNode second = network.addNode();
+        RopeSpan one = network.connect(first.id(), second.id());
+        RopeSpan two = network.connect(first.id(), second.id());
+
+        assertNotEquals(one.id(), two.id());
+        assertEquals(Set.of(one.id(), two.id()), incidentIds(network, first.id()));
+        assertEquals(Set.of(one.id(), two.id()), incidentIds(network, second.id()));
+
+        assertTrue(network.disconnect(one.id()));
+        assertEquals(Set.of(two.id()), incidentIds(network, first.id()));
+        assertEquals(Set.of(two.id()), incidentIds(network, second.id()));
     }
 
     @Test
@@ -80,5 +103,11 @@ class RopeNetworkTest {
         network.addNode();
         assertEquals(1, nodes.size());
         assertEquals(2, network.nodes().size());
+    }
+
+    private static Set<UUID> incidentIds(RopeNetwork network, UUID nodeId) {
+        var ids = new ArrayList<UUID>();
+        network.forEachIncidentSpanId(nodeId, ids::add);
+        return Set.copyOf(ids);
     }
 }
