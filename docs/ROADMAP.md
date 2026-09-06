@@ -16,17 +16,18 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 
 ## M1 — Rope engine
 
-- [ ] Rope node/span data model
-- [ ] Stable IDs and graph operations
+- [x] Rope node/span data model
+- [x] Stable IDs and graph operations
+- [x] Incident-span index for dirty updates
 - [ ] Two arbitrary world attachment points
-- [ ] Catenary/sag solver
-- [ ] Sampled rope path
+- [x] Catenary/sag solver
+- [x] Sampled rope path
 - [ ] Persistent save/load
 - [ ] Client/server synchronization
-- [ ] Add/remove nodes
+- [x] Add/remove nodes
 - [ ] Split/join rope networks
 - [ ] Debug renderer
-- [ ] Core unit tests
+- [x] Core unit tests
 
 ## M2 — Spelunking
 
