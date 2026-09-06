@@ -18,6 +18,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.8"
+          cache-read-only: false
       - name: Build all modules
         run: gradle build --stacktrace
       - name: Verify architecture boundaries
@@ -71,15 +72,28 @@ jobs:
         env:
           LOADER: ${{ matrix.loader }}
         run: |
+          LOG="$LOADER-server.log"
           mkdir -p "$LOADER/run"
           echo 'eula=true' > "$LOADER/run/eula.txt"
-          set +e
-          timeout 180s gradle ":$LOADER:runServer" --no-daemon > "$LOADER-server.log" 2>&1
-          STATUS=$?
-          set -e
-          cat "$LOADER-server.log"
-          if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 124 ]; then
-            exit "$STATUS"
-          fi
-          grep -q 'Spelunking Rope initialized' "$LOADER-server.log"
-          grep -q 'Done (' "$LOADER-server.log"
+
+          gradle ":$LOADER:runServer" --no-daemon > "$LOG" 2>&1 &
+          SERVER_PID=$!
+
+          READY=0
+          for _ in $(seq 1 240); do
+            if grep -q 'Done (' "$LOG" 2>/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          cat "$LOG"
+          kill "$SERVER_PID" 2>/dev/null || true
+          wait "$SERVER_PID" 2>/dev/null || true
+
+          test "$READY" -eq 1
+          grep -q 'Spelunking Rope initialized' "$LOG"
