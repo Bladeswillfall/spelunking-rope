@@ -31,6 +31,26 @@ class RopeNetworkTest {
     }
 
     @Test
+    void restoresExplicitStableIdsAndRejectsDuplicates() {
+        RopeNetwork network = new RopeNetwork();
+        UUID firstId = UUID.randomUUID();
+        UUID secondId = UUID.randomUUID();
+        UUID spanId = UUID.randomUUID();
+
+        RopeNode first = network.addNode(firstId);
+        RopeNode second = network.addNode(secondId);
+        RopeSpan span = network.connect(spanId, firstId, secondId, 14.0);
+
+        assertEquals(firstId, first.id());
+        assertEquals(secondId, second.id());
+        assertEquals(spanId, span.id());
+        assertEquals(14.0, span.allocatedLength());
+        assertThrows(IllegalArgumentException.class, () -> network.addNode(firstId));
+        assertThrows(IllegalArgumentException.class,
+                () -> network.connect(spanId, firstId, secondId, 15.0));
+    }
+
+    @Test
     void rejectsUnknownSelfAndInvalidLengthConnections() {
         RopeNetwork network = new RopeNetwork();
         RopeNode first = network.addNode();
