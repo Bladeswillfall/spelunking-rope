@@ -23,6 +23,7 @@ public final class RappelServerController {
     private static final double ANCHOR_EPSILON = 1.0e-6;
     private static final double WALL_PUSH_HORIZONTAL = 0.32;
     private static final double WALL_PUSH_VERTICAL = 0.16;
+    private static final int WALL_PUSH_COOLDOWN_TICKS = 6;
 
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
     private static final double[] CONSTRAINT_OUTPUT = new double[RappelConstraint.OUTPUT_STRIDE];
@@ -98,12 +99,17 @@ public final class RappelServerController {
             return;
         }
 
+        boolean changed = session.vertical != input.vertical();
         session.vertical = input.vertical();
-        if (input.push() && player.horizontalCollision) {
+        if (input.push() && player.horizontalCollision && session.pushCooldownTicks == 0) {
             applyWallPush(player);
+            session.pushCooldownTicks = WALL_PUSH_COOLDOWN_TICKS;
+            changed = true;
         }
-        // Re-anchor client integration to the server clock whenever input changes.
-        stateSender.accept(player, session.state());
+        if (changed) {
+            // Re-anchor client integration to the server clock only when accepted input changes state.
+            stateSender.accept(player, session.state());
+        }
     }
 
     public static void tick(
@@ -125,6 +131,9 @@ public final class RappelServerController {
                 continue;
             }
 
+            if (session.pushCooldownTicks > 0) {
+                session.pushCooldownTicks--;
+            }
             session.currentLength = adjustLength(session.currentLength, session.maxLength, session.vertical);
             player.fallDistance = 0.0F;
 
@@ -193,6 +202,7 @@ public final class RappelServerController {
         private final double maxLength;
         private double currentLength;
         private byte vertical;
+        private int pushCooldownTicks;
 
         private Session(
                 ServerLevel level,
