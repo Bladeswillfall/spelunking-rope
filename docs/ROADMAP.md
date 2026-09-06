@@ -23,7 +23,8 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Fixed arbitrary world attachment points
 - [x] Catenary/sag solver
 - [x] Sampled rope path
-- [ ] Persistent save/load
+- [x] Persistent save/load
+- [x] Dense dirty-span runtime and 1k/10k benchmark
 - [ ] Client/server synchronization
 - [x] Add/remove nodes
 - [ ] Split/join rope networks

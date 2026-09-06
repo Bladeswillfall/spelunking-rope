@@ -26,6 +26,8 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Test pure-Java core
         run: gradle :core:test
+      - name: Benchmark dense rope runtime
+        run: gradle :core:benchmarkRopeRuntime
       - name: Verify architecture boundaries
         shell: bash
         run: |

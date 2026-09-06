@@ -2,6 +2,8 @@ package io.github.bladeswillfall.spelunkingrope.core.geometry;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -77,11 +79,30 @@ class CatenarySamplerTest {
     }
 
     @Test
+    void writesIntoCallerProvidedOffsetWithoutTouchingNeighbors() {
+        int segments = 2;
+        int coordinateCount = CatenarySampler.coordinateCount(segments);
+        double[] out = new double[coordinateCount + 8];
+        Arrays.fill(out, -99.0);
+
+        CatenarySampler.sample(1, 2, 3, 5, 2, 3, 5, segments, out, 4);
+
+        assertEquals(-99.0, out[3], 0.0);
+        assertEquals(-99.0, out[4 + coordinateCount], 0.0);
+        assertEquals(1.0, out[4], 0.0);
+        assertEquals(5.0, out[4 + coordinateCount - 3], 0.0);
+    }
+
+    @Test
     void validatesCallerOwnedBuffer() {
         assertEquals(15, CatenarySampler.coordinateCount(4));
         assertThrows(IllegalArgumentException.class, () -> CatenarySampler.coordinateCount(0));
         assertThrows(IllegalArgumentException.class,
                 () -> CatenarySampler.sample(0, 0, 0, 1, 0, 0, 1, 4, new double[14]));
+        assertThrows(IllegalArgumentException.class,
+                () -> CatenarySampler.sample(0, 0, 0, 1, 0, 0, 1, 4, new double[20], 6));
+        assertThrows(IllegalArgumentException.class,
+                () -> CatenarySampler.sample(0, 0, 0, 1, 0, 0, 1, 4, new double[20], -1));
     }
 
     private static void assertPoint(double[] coordinates, int point, double x, double y, double z) {
