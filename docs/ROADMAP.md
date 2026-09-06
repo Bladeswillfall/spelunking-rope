@@ -25,10 +25,10 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Sampled rope path
 - [x] Persistent save/load
 - [x] Dense dirty-span runtime and 1k/10k benchmark
-- [ ] Client/server synchronization
+- [x] Fixed-rope client/server snapshot synchronization
 - [x] Add/remove nodes
 - [ ] Split/join rope networks
-- [ ] Debug renderer
+- [x] Debug renderer
 - [x] Core unit tests
 
 ## M2 — Spelunking
