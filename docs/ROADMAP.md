@@ -20,7 +20,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Stable IDs and graph operations
 - [x] Incident-span index for dirty updates
 - [x] Authoritative allocated span length
-- [ ] Two arbitrary world attachment points
+- [x] Fixed arbitrary world attachment points
 - [x] Catenary/sag solver
 - [x] Sampled rope path
 - [ ] Persistent save/load
