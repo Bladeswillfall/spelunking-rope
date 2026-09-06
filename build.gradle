@@ -34,8 +34,8 @@ subprojects {
 }
 
 configure([project(":common"), project(":fabric"), project(":forge")]) {
-    apply plugin: "architectury-plugin"
     apply plugin: "dev.architectury.loom"
+    apply plugin: "architectury-plugin"
 
     loom {
         silentMojangMappingsLicense()
