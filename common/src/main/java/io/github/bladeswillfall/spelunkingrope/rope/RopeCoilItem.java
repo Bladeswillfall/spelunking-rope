@@ -38,7 +38,7 @@ public final class RopeCoilItem extends Item {
         ServerLevel serverLevel = (ServerLevel) level;
         Direction facing = hookState.getValue(TripWireHookBlock.FACING);
         BlockPos column = hookPos.relative(facing);
-        int endBlockY = findDropEndBlockY(
+        int endBlockY = DropScan.findDropEndBlockY(
                 hookPos.getY(),
                 serverLevel.getMinBuildHeight(),
                 y -> {
@@ -74,14 +74,19 @@ public final class RopeCoilItem extends Item {
         return InteractionResult.CONSUME;
     }
 
-    static int findDropEndBlockY(int anchorBlockY, int minBuildHeight, IntPredicate isBlocked) {
-        Objects.requireNonNull(isBlocked, "isBlocked");
-        int lowestY = Math.max(minBuildHeight, anchorBlockY - MAX_DEPLOY_BLOCKS);
-        for (int y = anchorBlockY - 1; y >= lowestY; y--) {
-            if (isBlocked.test(y)) {
-                return y + 1;
-            }
+    static final class DropScan {
+        private DropScan() {
         }
-        return lowestY;
+
+        static int findDropEndBlockY(int anchorBlockY, int minBuildHeight, IntPredicate isBlocked) {
+            Objects.requireNonNull(isBlocked, "isBlocked");
+            int lowestY = Math.max(minBuildHeight, anchorBlockY - MAX_DEPLOY_BLOCKS);
+            for (int y = anchorBlockY - 1; y >= lowestY; y--) {
+                if (isBlocked.test(y)) {
+                    return y + 1;
+                }
+            }
+            return lowestY;
+        }
     }
 }
