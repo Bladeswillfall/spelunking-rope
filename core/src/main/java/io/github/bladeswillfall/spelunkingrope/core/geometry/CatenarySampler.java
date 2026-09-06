@@ -50,14 +50,28 @@ public final class CatenarySampler {
         double a = horizontal / (2.0 * u);
         double midpointSlope = 0.5 * (Math.log1p(dy / ropeLength) - Math.log1p(-dy / ropeLength));
         double s0 = midpointSlope - u;
-        double coshS0 = Math.cosh(s0);
+        double parameterStep = 2.0 * u / segments;
+        double coshStep = Math.cosh(parameterStep);
+        double sinhStep = Math.sinh(parameterStep);
+        double coshS = Math.cosh(s0);
+        double sinhS = Math.sinh(s0);
+        double coshS0 = coshS;
+        double x = x0;
+        double z = z0;
+        double stepX = dx / segments;
+        double stepZ = dz / segments;
 
         for (int i = 0; i <= segments; i++) {
-            double t = (double) i / segments;
             int offset = i * 3;
-            out[offset] = x0 + dx * t;
-            out[offset + 1] = y0 + a * (Math.cosh(s0 + 2.0 * u * t) - coshS0);
-            out[offset + 2] = z0 + dz * t;
+            out[offset] = x;
+            out[offset + 1] = y0 + a * (coshS - coshS0);
+            out[offset + 2] = z;
+
+            double nextCosh = coshS * coshStep + sinhS * sinhStep;
+            sinhS = sinhS * coshStep + coshS * sinhStep;
+            coshS = nextCosh;
+            x += stepX;
+            z += stepZ;
         }
 
         out[0] = x0;
@@ -75,12 +89,21 @@ public final class CatenarySampler {
             int segments,
             double[] out
     ) {
+        double x = x0;
+        double y = y0;
+        double z = z0;
+        double stepX = dx / segments;
+        double stepY = dy / segments;
+        double stepZ = dz / segments;
+
         for (int i = 0; i <= segments; i++) {
-            double t = (double) i / segments;
             int offset = i * 3;
-            out[offset] = x0 + dx * t;
-            out[offset + 1] = y0 + dy * t;
-            out[offset + 2] = z0 + dz * t;
+            out[offset] = x;
+            out[offset + 1] = y;
+            out[offset + 2] = z;
+            x += stepX;
+            y += stepY;
+            z += stepZ;
         }
     }
 
