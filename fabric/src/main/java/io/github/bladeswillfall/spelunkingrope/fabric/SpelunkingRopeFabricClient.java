@@ -6,5 +6,6 @@ public final class SpelunkingRopeFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         FabricRopeClientNetworking.init();
+        FabricRopeDebugRendering.init();
     }
 }
