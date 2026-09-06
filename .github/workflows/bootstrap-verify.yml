@@ -97,3 +97,47 @@ jobs:
 
           test "$READY" -eq 1
           grep -q 'Spelunking Rope initialized' "$LOG"
+
+  client:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, forge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Boot ${{ matrix.loader }} client
+        shell: bash
+        env:
+          LOADER: ${{ matrix.loader }}
+        run: |
+          LOG="$LOADER-client.log"
+          xvfb-run -a gradle ":$LOADER:runClient" --no-daemon > "$LOG" 2>&1 &
+          CLIENT_PID=$!
+
+          READY=0
+          for _ in $(seq 1 240); do
+            if grep -q 'Reloading ResourceManager' "$LOG" 2>/dev/null; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          cat "$LOG"
+          kill "$CLIENT_PID" 2>/dev/null || true
+          wait "$CLIENT_PID" 2>/dev/null || true
+
+          test "$READY" -eq 1
+          grep -q 'Spelunking Rope initialized' "$LOG"
