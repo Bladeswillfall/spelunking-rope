@@ -6,6 +6,7 @@ import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSavedData;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshot;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshotCodec;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -42,14 +43,25 @@ public final class ForgeRopeNetworking {
         MinecraftForge.EVENT_BUS.addListener(ForgeRopeNetworking::onPlayerLoggedIn);
     }
 
-    private static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
+    public static void broadcastSnapshot(ServerLevel level) {
+        FixedRopeSnapshot snapshot = snapshot(level);
+        for (ServerPlayer player : level.players()) {
+            sendSnapshot(player, snapshot);
         }
-        FixedRopeSnapshot snapshot = FixedRopeSavedData.get(player.serverLevel()).snapshot(
-                player.serverLevel().dimension().location()
-        );
+    }
+
+    private static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            sendSnapshot(player, snapshot(player.serverLevel()));
+        }
+    }
+
+    private static void sendSnapshot(ServerPlayer player, FixedRopeSnapshot snapshot) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), snapshot);
+    }
+
+    private static FixedRopeSnapshot snapshot(ServerLevel level) {
+        return FixedRopeSavedData.get(level).snapshot(level.dimension().location());
     }
 
     private static void handleSnapshot(
