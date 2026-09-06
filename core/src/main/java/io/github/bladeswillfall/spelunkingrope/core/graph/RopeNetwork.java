@@ -14,7 +14,16 @@ public final class RopeNetwork {
     private final Map<UUID, LinkedHashSet<UUID>> incidentSpanIds = new LinkedHashMap<>();
 
     public RopeNode addNode() {
-        RopeNode node = new RopeNode(UUID.randomUUID());
+        return addNode(UUID.randomUUID());
+    }
+
+    public RopeNode addNode(UUID nodeId) {
+        Objects.requireNonNull(nodeId, "nodeId");
+        if (nodes.containsKey(nodeId)) {
+            throw new IllegalArgumentException("Duplicate rope node: " + nodeId);
+        }
+
+        RopeNode node = new RopeNode(nodeId);
         nodes.put(node.id(), node);
         incidentSpanIds.put(node.id(), new LinkedHashSet<>());
         return node;
@@ -36,10 +45,18 @@ public final class RopeNetwork {
     }
 
     public RopeSpan connect(UUID startNodeId, UUID endNodeId, double allocatedLength) {
+        return connect(UUID.randomUUID(), startNodeId, endNodeId, allocatedLength);
+    }
+
+    public RopeSpan connect(UUID spanId, UUID startNodeId, UUID endNodeId, double allocatedLength) {
+        Objects.requireNonNull(spanId, "spanId");
+        if (spans.containsKey(spanId)) {
+            throw new IllegalArgumentException("Duplicate rope span: " + spanId);
+        }
         requireKnownNode(startNodeId);
         requireKnownNode(endNodeId);
 
-        RopeSpan span = new RopeSpan(UUID.randomUUID(), startNodeId, endNodeId, allocatedLength);
+        RopeSpan span = new RopeSpan(spanId, startNodeId, endNodeId, allocatedLength);
         spans.put(span.id(), span);
         incidentSpanIds.get(startNodeId).add(span.id());
         incidentSpanIds.get(endNodeId).add(span.id());
