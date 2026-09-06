@@ -35,11 +35,11 @@ public final class RopeNetwork {
         return true;
     }
 
-    public RopeSpan connect(UUID startNodeId, UUID endNodeId) {
+    public RopeSpan connect(UUID startNodeId, UUID endNodeId, double allocatedLength) {
         requireKnownNode(startNodeId);
         requireKnownNode(endNodeId);
 
-        RopeSpan span = new RopeSpan(UUID.randomUUID(), startNodeId, endNodeId);
+        RopeSpan span = new RopeSpan(UUID.randomUUID(), startNodeId, endNodeId, allocatedLength);
         spans.put(span.id(), span);
         incidentSpanIds.get(startNodeId).add(span.id());
         incidentSpanIds.get(endNodeId).add(span.id());
