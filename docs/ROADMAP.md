@@ -55,7 +55,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 
 - [x] Explicit pulley/sheave node
 - [x] Shared total-rope-length solver
-- [ ] Movable endpoint
+- [x] Movable endpoint
 - [ ] Manual winch
 - [ ] Player/cargo hauling
 - [ ] Persistence tests for routed systems
