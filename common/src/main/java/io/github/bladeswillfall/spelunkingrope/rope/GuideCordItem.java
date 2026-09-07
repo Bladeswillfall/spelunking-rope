@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.DyeableLeatherItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -19,10 +21,11 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public final class GuideCordItem extends Item {
+public final class GuideCordItem extends Item implements DyeableLeatherItem {
     private static final int MAX_START_BLOCK_DISTANCE = RopeCoilItem.MAX_DEPLOY_BLOCKS + 2;
     private static final String TAG_DIMENSION = "spelunking_rope_guide_dimension";
     private static final String TAG_POS = "spelunking_rope_guide_pos";
@@ -38,6 +41,19 @@ public final class GuideCordItem extends Item {
     @Override
     public boolean isFoil(ItemStack stack) {
         return readSelection(stack) != null || super.isFoil(stack);
+    }
+
+    @Override
+    public Component getName(ItemStack stack) {
+        byte dyeId = dyeId(stack);
+        if (dyeId == FixedRopeSnapshot.NO_DYE) {
+            return super.getName(stack);
+        }
+        DyeColor color = DyeColor.byId(dyeId);
+        return Component.translatable(
+                "item.spelunking_rope.guide_cord.colored",
+                Component.translatable("color.minecraft." + color.getName())
+        );
     }
 
     @Override
@@ -112,7 +128,7 @@ public final class GuideCordItem extends Item {
                 start,
                 end,
                 allocatedLength,
-                FixedRopeSnapshot.NO_DYE
+                dyeId(stack)
         );
         clearSelection(stack);
         if (!serverPlayer.getAbilities().instabuild) {
@@ -128,12 +144,43 @@ public final class GuideCordItem extends Item {
             return false;
         }
         FixedRopeSavedData data = FixedRopeSavedData.get(player.serverLevel());
-        int recovered = data.removeGuideLinesAt(RopeAnchor.attachment(clipPos, facing));
-        if (recovered <= 0) {
+        List<Byte> recoveredColors = data.removeGuideLinesAt(RopeAnchor.attachment(clipPos, facing));
+        if (recoveredColors.isEmpty()) {
             return false;
         }
-        giveRecoveredCord(player, recovered);
+        giveRecoveredCord(player, recoveredColors);
         return true;
+    }
+
+    static byte dyeId(ItemStack stack) {
+        if (!(stack.getItem() instanceof DyeableLeatherItem dyeable) || !dyeable.hasCustomColor(stack)) {
+            return FixedRopeSnapshot.NO_DYE;
+        }
+
+        int rgb = dyeable.getColor(stack);
+        DyeColor closest = DyeColor.WHITE;
+        long closestDistance = Long.MAX_VALUE;
+        // ponytail: only 16 vanilla dye colours and this runs on placement/name lookup, not per rope tick.
+        for (DyeColor candidate : DyeColor.values()) {
+            int candidateRgb = dyeRgb((byte) candidate.getId());
+            long dr = ((rgb >> 16) & 0xFF) - ((candidateRgb >> 16) & 0xFF);
+            long dg = ((rgb >> 8) & 0xFF) - ((candidateRgb >> 8) & 0xFF);
+            long db = (rgb & 0xFF) - (candidateRgb & 0xFF);
+            long distance = dr * dr + dg * dg + db * db;
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = candidate;
+            }
+        }
+        return (byte) closest.getId();
+    }
+
+    static int dyeRgb(byte dyeId) {
+        float[] diffuse = DyeColor.byId(dyeId).getTextureDiffuseColors();
+        int red = Math.round(diffuse[0] * 255.0F);
+        int green = Math.round(diffuse[1] * 255.0F);
+        int blue = Math.round(diffuse[2] * 255.0F);
+        return red << 16 | green << 8 | blue;
     }
 
     private static Selection readSelection(ItemStack stack) {
@@ -163,22 +210,33 @@ public final class GuideCordItem extends Item {
         player.displayClientMessage(Component.translatable(translationKey), true);
     }
 
-    private static void giveRecoveredCord(ServerPlayer player, int count) {
+    private static void giveRecoveredCord(ServerPlayer player, List<Byte> recoveredColors) {
         if (player.getAbilities().instabuild) {
             return;
         }
         Item guideCord = BuiltInRegistries.ITEM.get(GUIDE_CORD_ID);
-        if (guideCord == Items.AIR) {
+        if (!(guideCord instanceof GuideCordItem guideCordItem)) {
             throw new IllegalStateException("Guide cord item is not registered");
         }
-        int remaining = count;
-        while (remaining > 0) {
-            int batch = Math.min(remaining, guideCord.getMaxStackSize());
-            ItemStack recovered = new ItemStack(guideCord, batch);
-            if (!player.addItem(recovered)) {
-                player.drop(recovered, false);
+
+        int[] counts = new int[17];
+        for (byte color : recoveredColors) {
+            counts[color + 1]++;
+        }
+        for (int colorIndex = 0; colorIndex < counts.length; colorIndex++) {
+            int remaining = counts[colorIndex];
+            byte dyeId = (byte) (colorIndex - 1);
+            while (remaining > 0) {
+                int batch = Math.min(remaining, guideCord.getMaxStackSize());
+                ItemStack recovered = new ItemStack(guideCord, batch);
+                if (dyeId != FixedRopeSnapshot.NO_DYE) {
+                    guideCordItem.setColor(recovered, dyeRgb(dyeId));
+                }
+                if (!player.addItem(recovered)) {
+                    player.drop(recovered, false);
+                }
+                remaining -= batch;
             }
-            remaining -= batch;
         }
     }
 
