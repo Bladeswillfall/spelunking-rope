@@ -34,9 +34,25 @@ public final class SharedRopeLengthSolver {
                 firstMinimum - firstLength,
                 Math.min(requestedToFirst, secondLength - secondMinimum)
         );
-        double newFirst = firstLength + actual;
-        double newSecond = total - newFirst;
-        return new Transfer(newFirst, newSecond, newFirst - firstLength);
+        if (actual == 0.0) {
+            return new Transfer(firstLength, secondLength, 0.0);
+        }
+
+        double newFirst;
+        double newSecond;
+        if (actual > 0.0) {
+            newSecond = secondLength - actual;
+            newFirst = total - newSecond;
+        } else {
+            newFirst = firstLength + actual;
+            newSecond = total - newFirst;
+        }
+
+        double transferred = newFirst - firstLength;
+        if (transferred == 0.0) {
+            return new Transfer(firstLength, secondLength, 0.0);
+        }
+        return new Transfer(newFirst, newSecond, transferred);
     }
 
     private static void requireFinitePositive(double value, String name) {
