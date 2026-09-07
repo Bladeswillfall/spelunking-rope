@@ -198,7 +198,7 @@ public final class RopeNetwork {
         int maxIncidentSpans = switch (node.type()) {
             case FIXED_ANCHOR -> Integer.MAX_VALUE;
             case PULLEY -> 2;
-            case MOVABLE_ENDPOINT -> 1;
+            case MOVABLE_ENDPOINT, WINCH -> 1;
         };
         if (incidentSpanIds.get(node.id()).size() >= maxIncidentSpans) {
             throw new IllegalArgumentException(
