@@ -1,13 +1,23 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
 
 public final class RappelClientController {
+    public static final KeyMapping DETACH_KEY = new KeyMapping(
+            "key.spelunking_rope.detach",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_R,
+            "key.categories.movement"
+    );
+
     private static final double WALL_PUSH_HORIZONTAL = 0.32;
     private static final double WALL_PUSH_VERTICAL = 0.16;
     private static final double[] CONSTRAINT_OUTPUT = new double[RappelConstraint.OUTPUT_STRIDE];
@@ -37,22 +47,22 @@ public final class RappelClientController {
             wasActive = true;
         }
 
-        if (client.options.keyShift.isDown()) {
+        if (DETACH_KEY.isDown()) {
             inputSender.accept(new RappelPackets.Input((byte) 0, true, false));
             state.clear();
             wasActive = false;
             return;
         }
 
-        byte vertical = (byte) ((client.options.keyUp.isDown() ? 1 : 0)
-                - (client.options.keyDown.isDown() ? 1 : 0));
+        boolean jumpDown = client.options.keyJump.isDown();
+        byte vertical = (byte) ((jumpDown ? 1 : 0)
+                - (client.options.keyShift.isDown() ? 1 : 0));
         if (vertical != lastVertical) {
             lastVertical = vertical;
             inputSender.accept(new RappelPackets.Input(vertical, false, false));
         }
         state.advanceLength(vertical);
 
-        boolean jumpDown = client.options.keyJump.isDown();
         if (jumpDown && !jumpWasDown && player.horizontalCollision) {
             applyWallPush(player);
             inputSender.accept(new RappelPackets.Input(vertical, false, true));
@@ -61,6 +71,25 @@ public final class RappelClientController {
 
         player.fallDistance = 0.0F;
         Vec3 velocity = player.getDeltaMovement();
+        if (vertical != 0) {
+            RappelConstraint.constrainTaut(
+                    state.anchorX(),
+                    state.anchorY(),
+                    state.anchorZ(),
+                    player.getX(),
+                    player.getY(),
+                    player.getZ(),
+                    velocity.x,
+                    velocity.y,
+                    velocity.z,
+                    state.currentLength(),
+                    CONSTRAINT_OUTPUT,
+                    0
+            );
+            applyConstraint(player);
+            return;
+        }
+
         if (RappelConstraint.constrain(
                 state.anchorX(),
                 state.anchorY(),
@@ -75,9 +104,13 @@ public final class RappelClientController {
                 CONSTRAINT_OUTPUT,
                 0
         )) {
-            player.setPos(CONSTRAINT_OUTPUT[0], CONSTRAINT_OUTPUT[1], CONSTRAINT_OUTPUT[2]);
-            player.setDeltaMovement(CONSTRAINT_OUTPUT[3], CONSTRAINT_OUTPUT[4], CONSTRAINT_OUTPUT[5]);
+            applyConstraint(player);
         }
+    }
+
+    private static void applyConstraint(LocalPlayer player) {
+        player.setPos(CONSTRAINT_OUTPUT[0], CONSTRAINT_OUTPUT[1], CONSTRAINT_OUTPUT[2]);
+        player.setDeltaMovement(CONSTRAINT_OUTPUT[3], CONSTRAINT_OUTPUT[4], CONSTRAINT_OUTPUT[5]);
     }
 
     private static void applyWallPush(LocalPlayer player) {
