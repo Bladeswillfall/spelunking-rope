@@ -35,7 +35,10 @@ public final class SpelunkingRopeFabric implements ModInitializer {
         WinchBlock winch = Registry.register(
                 BuiltInRegistries.BLOCK,
                 winchId,
-                new WinchBlock(FabricRopeNetworking::broadcastSnapshot)
+                new WinchBlock(
+                        FabricRopeNetworking::broadcastSnapshot,
+                        FabricRopeNetworking::sendRappelState
+                )
         );
         Registry.register(BuiltInRegistries.ITEM, winchId, new BlockItem(winch, new Item.Properties()));
 
