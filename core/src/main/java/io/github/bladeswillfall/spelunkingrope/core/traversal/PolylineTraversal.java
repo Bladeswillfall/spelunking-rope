@@ -69,6 +69,25 @@ public final class PolylineTraversal {
         return bestAlong;
     }
 
+    public static double remapMaterialDistance(
+            double currentDistance,
+            double newPathLength,
+            double deployedLengthDelta,
+            boolean changedAtStart
+    ) {
+        if (!Double.isFinite(currentDistance)
+                || !Double.isFinite(newPathLength)
+                || !Double.isFinite(deployedLengthDelta)) {
+            throw new IllegalArgumentException("material-distance inputs must be finite");
+        }
+        if (newPathLength < 0.0) {
+            throw new IllegalArgumentException("newPathLength must not be negative");
+        }
+
+        double remapped = changedAtStart ? currentDistance + deployedLengthDelta : currentDistance;
+        return Math.max(0.0, Math.min(newPathLength, remapped));
+    }
+
     public static void sample(
             double[] points,
             int offset,
