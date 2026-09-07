@@ -15,8 +15,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -334,6 +336,99 @@ public final class RappelServerController {
         return true;
     }
 
+    public static FixedRopeSavedData.WinchAdjustment adjustWinch(
+            ServerLevel level,
+            BlockAttachment winchAttachment,
+            double requestedDeployedDelta,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
+        FixedRopeSavedData data = FixedRopeSavedData.get(level);
+        FixedRopeSavedData.WinchPreview preview = data.previewWinch(winchAttachment, requestedDeployedDelta);
+        if (preview.adjustment() != FixedRopeSavedData.WinchAdjustment.CHANGED) {
+            return preview.adjustment();
+        }
+
+        RopeSpan span = data.span(preview.spanId());
+        if (span == null) {
+            throw new IllegalStateException("Winch preview references a missing structural span: " + preview.spanId());
+        }
+        BlockAttachment start = data.attachment(span.startNodeId());
+        BlockAttachment end = data.attachment(span.endNodeId());
+        if (start == null || end == null) {
+            throw new IllegalStateException("Winch span is missing an endpoint attachment: " + span.id());
+        }
+
+        double[] geometry = sampleSpan(preview.newLength(), start, end);
+        double pathLength = PolylineTraversal.length(geometry, 0, TRAVERSE_SEGMENTS + 1);
+        if (!(pathLength > 0.0)) {
+            return FixedRopeSavedData.WinchAdjustment.BLOCKED;
+        }
+
+        List<Map.Entry<UUID, Session>> affected = new ArrayList<>();
+        for (Map.Entry<UUID, Session> entry : SESSIONS.entrySet()) {
+            Session session = entry.getValue();
+            if (session.level == level && session.spanId.equals(span.id())) {
+                affected.add(entry);
+            }
+        }
+        // ponytail: winch clicks are rare; sorting the small transient session set avoids another span/player index.
+        affected.sort(Map.Entry.comparingByKey());
+
+        List<HaulTarget> targets = new ArrayList<>(affected.size());
+        for (Map.Entry<UUID, Session> entry : affected) {
+            ServerPlayer attached = level.getServer().getPlayerList().getPlayer(entry.getKey());
+            if (attached == null
+                    || !attached.isAlive()
+                    || attached.isSpectator()
+                    || attached.serverLevel() != level) {
+                continue;
+            }
+
+            Session session = entry.getValue();
+            if (session.mode != RappelPackets.MODE_TRAVERSE) {
+                return FixedRopeSavedData.WinchAdjustment.BLOCKED;
+            }
+
+            double remappedDistance = PolylineTraversal.remapMaterialDistance(
+                    session.currentLength,
+                    pathLength,
+                    preview.deployedLengthDelta(),
+                    preview.winchAtStart()
+            );
+            PolylineTraversal.sample(
+                    geometry,
+                    0,
+                    TRAVERSE_SEGMENTS + 1,
+                    remappedDistance,
+                    CONSTRAINT_OUTPUT,
+                    0
+            );
+            double targetX = CONSTRAINT_OUTPUT[0];
+            double targetY = CONSTRAINT_OUTPUT[1] - TRAVERSE_HANG_OFFSET;
+            double targetZ = CONSTRAINT_OUTPUT[2];
+            if (!canOccupy(attached, targetX, targetY, targetZ)) {
+                return FixedRopeSavedData.WinchAdjustment.BLOCKED;
+            }
+            targets.add(new HaulTarget(attached, session, remappedDistance, targetX, targetY, targetZ));
+        }
+
+        data.applyWinch(preview);
+        for (HaulTarget target : targets) {
+            Session session = target.session();
+            session.pathGeometry = geometry;
+            session.maxLength = pathLength;
+            session.currentLength = target.pathDistance();
+
+            ServerPlayer attached = target.player();
+            attached.teleportTo(target.x(), target.y(), target.z());
+            attached.setDeltaMovement(Vec3.ZERO);
+            attached.fallDistance = 0.0F;
+            attached.hurtMarked = true;
+            stateSender.accept(attached, session.state());
+        }
+        return FixedRopeSavedData.WinchAdjustment.CHANGED;
+    }
+
     public static void handleInput(
             ServerPlayer player,
             RappelPackets.Input input,
@@ -570,11 +665,15 @@ public final class RappelServerController {
     }
 
     private static double[] sampleSpan(RopeSpan span, BlockAttachment start, BlockAttachment end) {
+        return sampleSpan(span.allocatedLength(), start, end);
+    }
+
+    private static double[] sampleSpan(double allocatedLength, BlockAttachment start, BlockAttachment end) {
         double[] geometry = new double[CatenarySampler.coordinateCount(TRAVERSE_SEGMENTS)];
         CatenarySampler.sample(
                 start.worldX(), start.worldY(), start.worldZ(),
                 end.worldX(), end.worldY(), end.worldZ(),
-                span.allocatedLength(),
+                allocatedLength,
                 TRAVERSE_SEGMENTS,
                 geometry
         );
@@ -649,6 +748,16 @@ public final class RappelServerController {
 
     private static boolean close(double left, double right) {
         return Math.abs(left - right) <= ANCHOR_EPSILON;
+    }
+
+    private record HaulTarget(
+            ServerPlayer player,
+            Session session,
+            double pathDistance,
+            double x,
+            double y,
+            double z
+    ) {
     }
 
     private static final class Session {

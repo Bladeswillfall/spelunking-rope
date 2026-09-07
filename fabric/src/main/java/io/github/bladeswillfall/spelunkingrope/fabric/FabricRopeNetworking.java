@@ -99,6 +99,12 @@ public final class FabricRopeNetworking {
         }
     }
 
+    public static void sendRappelState(ServerPlayer player, RappelPackets.State state) {
+        FriendlyByteBuf buffer = PacketByteBufs.create();
+        RappelPackets.encodeState(state, buffer);
+        ServerPlayNetworking.send(player, RappelPackets.STATE_CHANNEL, buffer);
+    }
+
     private static void sendSnapshot(ServerPlayer player) {
         sendSnapshot(player, snapshot(player.serverLevel()));
     }
@@ -107,12 +113,6 @@ public final class FabricRopeNetworking {
         FriendlyByteBuf buffer = PacketByteBufs.create();
         FixedRopeSnapshotCodec.encode(snapshot, buffer);
         ServerPlayNetworking.send(player, FixedRopeSnapshotCodec.CHANNEL_ID, buffer);
-    }
-
-    private static void sendRappelState(ServerPlayer player, RappelPackets.State state) {
-        FriendlyByteBuf buffer = PacketByteBufs.create();
-        RappelPackets.encodeState(state, buffer);
-        ServerPlayNetworking.send(player, RappelPackets.STATE_CHANNEL, buffer);
     }
 
     private static FixedRopeSnapshot snapshot(ServerLevel level) {

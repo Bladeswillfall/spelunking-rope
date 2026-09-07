@@ -33,7 +33,10 @@ public final class SpelunkingRopeForge {
     private static final RegistryObject<PulleyBlock> PULLEY = BLOCKS.register("pulley", PulleyBlock::new);
     private static final RegistryObject<WinchBlock> WINCH = BLOCKS.register(
             "winch",
-            () -> new WinchBlock(ForgeRopeNetworking::broadcastSnapshot)
+            () -> new WinchBlock(
+                    ForgeRopeNetworking::broadcastSnapshot,
+                    ForgeRopeNetworking::sendRappelState
+            )
     );
     @SuppressWarnings("unused")
     private static final RegistryObject<Item> PITON_ITEM = ITEMS.register(

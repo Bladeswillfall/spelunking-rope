@@ -55,6 +55,54 @@ class WinchSavedDataTest {
     }
 
     @Test
+    void previewsWithoutMutationAndReportsTheWinchEndpoint() {
+        BlockAttachment winch = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        BlockAttachment anchor = BlockAttachment.atWorld(10.5, 64.5, 0.5);
+        FixedRopeSavedData data = new FixedRopeSavedData();
+        RopeSpan original = data.addRouteRope(
+                winch, RopeNode.Type.WINCH,
+                anchor, RopeNode.Type.FIXED_ANCHOR,
+                12.0
+        );
+        assertNotNull(original);
+
+        FixedRopeSavedData working = FixedRopeSavedData.load(data.save(new CompoundTag()));
+        assertFalse(working.isDirty());
+        FixedRopeSavedData.WinchPreview preview = working.previewWinch(winch, -1.0);
+        assertEquals(FixedRopeSavedData.WinchAdjustment.CHANGED, preview.adjustment());
+        assertEquals(original.id(), preview.spanId());
+        assertTrue(preview.winchAtStart());
+        assertEquals(12.0, preview.oldLength(), 1.0e-12);
+        assertEquals(11.0, preview.newLength(), 1.0e-12);
+        assertEquals(-1.0, preview.deployedLengthDelta(), 1.0e-12);
+        assertEquals(12.0, structuralSpan(working, original.id()).allocatedLength(), 1.0e-12);
+        assertFalse(working.isDirty());
+
+        working.applyWinch(preview);
+        RopeSpan applied = structuralSpan(working, original.id());
+        assertEquals(11.0, applied.allocatedLength(), 1.0e-12);
+        assertEquals(original.startNodeId(), applied.startNodeId());
+        assertEquals(original.endNodeId(), applied.endNodeId());
+        assertTrue(working.isDirty());
+
+        FixedRopeSavedData reverse = new FixedRopeSavedData();
+        RopeSpan reverseSpan = reverse.addRouteRope(
+                anchor, RopeNode.Type.FIXED_ANCHOR,
+                winch, RopeNode.Type.WINCH,
+                12.0
+        );
+        assertNotNull(reverseSpan);
+        reverse = FixedRopeSavedData.load(reverse.save(new CompoundTag()));
+        FixedRopeSavedData.WinchPreview endPreview = reverse.previewWinch(winch, 1.0);
+        assertEquals(FixedRopeSavedData.WinchAdjustment.CHANGED, endPreview.adjustment());
+        assertEquals(reverseSpan.id(), endPreview.spanId());
+        assertFalse(endPreview.winchAtStart());
+        assertEquals(12.0, endPreview.oldLength(), 1.0e-12);
+        assertEquals(13.0, endPreview.newLength(), 1.0e-12);
+        assertFalse(reverse.isDirty());
+    }
+
+    @Test
     void adjustsLengthWithinGeometryAndSingleCoilCapacityWithoutChangingIdentity() {
         BlockAttachment winch = BlockAttachment.atWorld(0.5, 64.5, 0.5);
         BlockAttachment anchor = BlockAttachment.atWorld(10.5, 64.5, 0.5);
