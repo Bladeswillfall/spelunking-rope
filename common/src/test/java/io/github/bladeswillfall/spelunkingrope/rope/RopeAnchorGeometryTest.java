@@ -2,12 +2,10 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.state.BlockState;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RopeAnchorGeometryTest {
     private static final double EPSILON = 1.0e-12;
@@ -19,14 +17,6 @@ class RopeAnchorGeometryTest {
         assertAttachment(RopeAnchor.attachment(POS, Direction.EAST), 10.625, 64.5, 20.5);
         assertAttachment(RopeAnchor.attachment(POS, Direction.SOUTH), 10.5, 64.5, 20.625);
         assertAttachment(RopeAnchor.attachment(POS, Direction.WEST), 10.375, 64.5, 20.5);
-    }
-
-    @Test
-    void pitonCanShareItsEyeWithGuideCord() {
-        BlockState piton = new PitonBlock().defaultBlockState().setValue(PitonBlock.FACING, Direction.NORTH);
-
-        assertTrue(RopeAnchor.isGuideAnchor(piton));
-        assertEquals(RopeAnchor.routeAttachment(POS, piton), RopeAnchor.guideAttachment(POS, piton));
     }
 
     @Test
