@@ -125,7 +125,12 @@ public final class RappelServerController {
                 BlockAttachment.atWorld(end.worldX(), newEndY, end.worldZ()),
                 newLength
         );
-        session.maxLength = newLength;
+        // Extension is rare. Update every active user of this one span rather than maintaining another index.
+        for (Session active : SESSIONS.values()) {
+            if (active.level == session.level && active.spanId.equals(span.id())) {
+                active.maxLength = newLength;
+            }
+        }
         return true;
     }
 
