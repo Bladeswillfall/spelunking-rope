@@ -51,6 +51,19 @@ public final class RappelPackets {
             this(active, active ? MODE_RAPPEL : 0, spanId, anchorX, anchorY, anchorZ, currentLength, maxLength, 0.0);
         }
 
+        public State(
+                boolean active,
+                byte mode,
+                UUID spanId,
+                double anchorX,
+                double anchorY,
+                double anchorZ,
+                double currentLength,
+                double maxLength
+        ) {
+            this(active, mode, spanId, anchorX, anchorY, anchorZ, currentLength, maxLength, 0.0);
+        }
+
         public State {
             if (active) {
                 Objects.requireNonNull(spanId, "spanId");
@@ -69,6 +82,10 @@ public final class RappelPackets {
 
         public static State detached() {
             return new State(false, (byte) 0, null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        }
+
+        public static State traverse(UUID spanId, double distance, double pathLength) {
+            return traverse(spanId, distance, pathLength, 0.0);
         }
 
         public static State traverse(UUID spanId, double distance, double pathLength, double speed) {
