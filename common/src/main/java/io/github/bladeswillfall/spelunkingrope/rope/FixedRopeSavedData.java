@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class FixedRopeSavedData extends SavedData {
-    static final int SCHEMA_VERSION = 1;
+    static final int SCHEMA_VERSION = 2;
 
     private static final String DATA_NAME = "spelunking_rope";
     private static final String TAG_SCHEMA_VERSION = "schema_version";
@@ -29,6 +29,8 @@ public final class FixedRopeSavedData extends SavedData {
     private static final String TAG_START = "start";
     private static final String TAG_END = "end";
     private static final String TAG_LENGTH = "length";
+    private static final String TAG_GUIDE = "guide";
+    private static final String TAG_COLOR = "color";
     private static final String TAG_BLOCK_X = "block_x";
     private static final String TAG_BLOCK_Y = "block_y";
     private static final String TAG_BLOCK_Z = "block_z";
@@ -38,6 +40,8 @@ public final class FixedRopeSavedData extends SavedData {
 
     private final RopeNetwork network = new RopeNetwork();
     private final Map<UUID, BlockAttachment> attachments = new HashMap<>();
+    // ponytail: structural spans are the common case; only guide spans pay for metadata storage.
+    private final Map<UUID, Byte> guideColors = new HashMap<>();
 
     public static FixedRopeSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
@@ -63,6 +67,19 @@ public final class FixedRopeSavedData extends SavedData {
         return span;
     }
 
+    public RopeSpan addGuideLine(
+            BlockAttachment start,
+            BlockAttachment end,
+            double allocatedLength,
+            byte dyeColor
+    ) {
+        requireGuideColor(dyeColor);
+        RopeSpan span = addRope(start, end, allocatedLength);
+        guideColors.put(span.id(), dyeColor);
+        setDirty();
+        return span;
+    }
+
     public RopeNode addNode(BlockAttachment attachment) {
         Objects.requireNonNull(attachment, "attachment");
         RopeNode node = network.addNode();
@@ -72,8 +89,17 @@ public final class FixedRopeSavedData extends SavedData {
     }
 
     public boolean removeNode(UUID nodeId) {
+        List<UUID> incidentGuideSpans = new ArrayList<>();
+        for (RopeSpan span : network.spans()) {
+            if ((span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) && isGuideLine(span.id())) {
+                incidentGuideSpans.add(span.id());
+            }
+        }
         if (!network.removeNode(nodeId)) {
             return false;
+        }
+        for (UUID spanId : incidentGuideSpans) {
+            guideColors.remove(spanId);
         }
         attachments.remove(nodeId);
         setDirty();
@@ -90,6 +116,7 @@ public final class FixedRopeSavedData extends SavedData {
         if (!network.disconnect(spanId)) {
             return false;
         }
+        guideColors.remove(spanId);
         setDirty();
         return true;
     }
@@ -101,12 +128,32 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.disconnect(current.id());
+        guideColors.remove(current.id());
         removeNodeIfOrphan(current.startNodeId());
         if (!current.endNodeId().equals(current.startNodeId())) {
             removeNodeIfOrphan(current.endNodeId());
         }
         setDirty();
         return true;
+    }
+
+    int removeGuideLinesAt(BlockAttachment attachment) {
+        Objects.requireNonNull(attachment, "attachment");
+        List<UUID> matches = new ArrayList<>();
+        for (RopeSpan span : network.spans()) {
+            if (!isGuideLine(span.id())) {
+                continue;
+            }
+            BlockAttachment start = attachments.get(span.startNodeId());
+            BlockAttachment end = attachments.get(span.endNodeId());
+            if (attachment.equals(start) || attachment.equals(end)) {
+                matches.add(span.id());
+            }
+        }
+        for (UUID spanId : matches) {
+            disconnectAndRemoveOrphanNodes(spanId);
+        }
+        return matches.size();
     }
 
     public BlockAttachment attachment(UUID nodeId) {
@@ -122,6 +169,10 @@ public final class FixedRopeSavedData extends SavedData {
             }
         }
         return null;
+    }
+
+    boolean isGuideLine(UUID spanId) {
+        return guideColors.containsKey(Objects.requireNonNull(spanId, "spanId"));
     }
 
     RopeSpan replaceSpanEnd(UUID spanId, BlockAttachment end, double allocatedLength) {
@@ -160,11 +211,14 @@ public final class FixedRopeSavedData extends SavedData {
         for (RopeSpan span : currentSpans) {
             BlockAttachment start = requireAttachment(span.startNodeId());
             BlockAttachment end = requireAttachment(span.endNodeId());
+            Byte guideColor = guideColors.get(span.id());
             snapshotSpans.add(new FixedRopeSnapshot.Span(
                     span.id(),
                     start,
                     end,
-                    span.allocatedLength()
+                    span.allocatedLength(),
+                    guideColor == null ? FixedRopeSnapshot.TYPE_STRUCTURAL : FixedRopeSnapshot.TYPE_GUIDE,
+                    guideColor == null ? FixedRopeSnapshot.NO_DYE : guideColor
             ));
         }
         return new FixedRopeSnapshot(dimension, snapshotSpans);
@@ -196,6 +250,11 @@ public final class FixedRopeSavedData extends SavedData {
             spanTag.putUUID(TAG_START, span.startNodeId());
             spanTag.putUUID(TAG_END, span.endNodeId());
             spanTag.putDouble(TAG_LENGTH, span.allocatedLength());
+            Byte guideColor = guideColors.get(span.id());
+            if (guideColor != null) {
+                spanTag.putBoolean(TAG_GUIDE, true);
+                spanTag.putByte(TAG_COLOR, guideColor);
+            }
             spans.add(spanTag);
         }
         tag.put(TAG_SPANS, spans);
@@ -204,7 +263,7 @@ public final class FixedRopeSavedData extends SavedData {
 
     static FixedRopeSavedData load(CompoundTag tag) {
         int version = tag.getInt(TAG_SCHEMA_VERSION);
-        if (version != SCHEMA_VERSION) {
+        if (version < 1 || version > SCHEMA_VERSION) {
             throw new IllegalStateException("Unsupported rope data schema version: " + version);
         }
 
@@ -229,12 +288,19 @@ public final class FixedRopeSavedData extends SavedData {
         ListTag spans = tag.getList(TAG_SPANS, Tag.TAG_COMPOUND);
         for (int i = 0; i < spans.size(); i++) {
             CompoundTag spanTag = spans.getCompound(i);
-            data.network.connect(
+            RopeSpan span = data.network.connect(
                     spanTag.getUUID(TAG_ID),
                     spanTag.getUUID(TAG_START),
                     spanTag.getUUID(TAG_END),
                     spanTag.getDouble(TAG_LENGTH)
             );
+            if (version >= 2 && spanTag.getBoolean(TAG_GUIDE)) {
+                byte color = spanTag.contains(TAG_COLOR, Tag.TAG_BYTE)
+                        ? spanTag.getByte(TAG_COLOR)
+                        : FixedRopeSnapshot.NO_DYE;
+                requireGuideColor(color);
+                data.guideColors.put(span.id(), color);
+            }
         }
         return data;
     }
@@ -256,5 +322,11 @@ public final class FixedRopeSavedData extends SavedData {
             throw new IllegalStateException("Missing attachment for rope node " + nodeId);
         }
         return attachment;
+    }
+
+    private static void requireGuideColor(byte dyeColor) {
+        if (dyeColor < FixedRopeSnapshot.NO_DYE || dyeColor > 15) {
+            throw new IllegalArgumentException("invalid guide dye colour: " + dyeColor);
+        }
     }
 }
