@@ -1,4 +1,8 @@
 {
   "item.spelunking_rope.rope_coil": "Rope Coil",
-  "block.spelunking_rope.piton": "Piton"
+  "block.spelunking_rope.piton": "Piton",
+  "message.spelunking_rope.route_selected": "Route start selected",
+  "message.spelunking_rope.route_cancelled": "Route selection cancelled",
+  "message.spelunking_rope.route_too_long": "That route cannot be made with one rope coil",
+  "message.spelunking_rope.route_created": "Rope route placed"
 }

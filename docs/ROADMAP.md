@@ -44,7 +44,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 
 ## M3 — Route infrastructure
 
-- [ ] Anchor-to-anchor rope placement
+- [x] Anchor-to-anchor rope placement
 - [ ] Guide cord / guide clips
 - [ ] Colourable guide lines
 - [ ] Horizontal traversal
