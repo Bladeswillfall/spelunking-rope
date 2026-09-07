@@ -3,6 +3,7 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNetwork;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
+import io.github.bladeswillfall.spelunkingrope.core.graph.SharedRopeLengthSolver;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -156,6 +157,61 @@ public final class FixedRopeSavedData extends SavedData {
         RopeSpan span = network.connect(startNodeId, endNodeId, allocatedLength);
         setDirty();
         return span;
+    }
+
+    SharedRopeLengthSolver.Transfer transferAcrossPulley(
+            UUID pulleyNodeId,
+            UUID firstSpanId,
+            double firstMinimum,
+            double secondMinimum,
+            double requestedToFirst
+    ) {
+        Objects.requireNonNull(pulleyNodeId, "pulleyNodeId");
+        Objects.requireNonNull(firstSpanId, "firstSpanId");
+
+        RopeNode pulley = null;
+        for (RopeNode node : network.nodes()) {
+            if (node.id().equals(pulleyNodeId)) {
+                pulley = node;
+                break;
+            }
+        }
+        if (pulley == null || pulley.type() != RopeNode.Type.PULLEY) {
+            throw new IllegalArgumentException("Unknown pulley node: " + pulleyNodeId);
+        }
+
+        List<UUID> incident = new ArrayList<>(2);
+        network.forEachIncidentSpanId(pulleyNodeId, spanId -> {
+            if (!isGuideLine(spanId)) {
+                incident.add(spanId);
+            }
+        });
+        if (incident.size() != 2 || !incident.contains(firstSpanId)) {
+            throw new IllegalArgumentException("Pulley must have two structural spans including " + firstSpanId);
+        }
+
+        UUID secondSpanId = incident.get(0).equals(firstSpanId) ? incident.get(1) : incident.get(0);
+        RopeSpan first = span(firstSpanId);
+        RopeSpan second = span(secondSpanId);
+        if (first == null || second == null) {
+            throw new IllegalStateException("Pulley incident index references a missing structural span");
+        }
+
+        SharedRopeLengthSolver.Transfer transfer = SharedRopeLengthSolver.transfer(
+                first.allocatedLength(),
+                second.allocatedLength(),
+                firstMinimum,
+                secondMinimum,
+                requestedToFirst
+        );
+        if (transfer.transferredToFirst() == 0.0) {
+            return transfer;
+        }
+
+        network.replaceSpanLength(first.id(), transfer.firstLength());
+        network.replaceSpanLength(second.id(), transfer.secondLength());
+        setDirty();
+        return transfer;
     }
 
     public boolean disconnect(UUID spanId) {
