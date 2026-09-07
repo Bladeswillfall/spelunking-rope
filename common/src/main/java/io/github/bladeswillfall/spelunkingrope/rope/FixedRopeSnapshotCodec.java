@@ -24,6 +24,8 @@ public final class FixedRopeSnapshotCodec {
             writeAttachment(buffer, span.start());
             writeAttachment(buffer, span.end());
             buffer.writeDouble(span.allocatedLength());
+            buffer.writeByte(span.lineType());
+            buffer.writeByte(span.dyeColor());
         }
     }
 
@@ -40,7 +42,14 @@ public final class FixedRopeSnapshotCodec {
             BlockAttachment start = readAttachment(buffer);
             BlockAttachment end = readAttachment(buffer);
             double allocatedLength = buffer.readDouble();
-            spans.add(new FixedRopeSnapshot.Span(id, start, end, allocatedLength));
+            spans.add(new FixedRopeSnapshot.Span(
+                    id,
+                    start,
+                    end,
+                    allocatedLength,
+                    buffer.readByte(),
+                    buffer.readByte()
+            ));
         }
         return new FixedRopeSnapshot(dimension, spans);
     }
