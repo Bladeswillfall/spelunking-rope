@@ -2,8 +2,13 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -15,12 +20,16 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class PitonBlock extends HorizontalDirectionalBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final BooleanProperty GUIDE_CLIP = BooleanProperty.create("guide_clip");
 
     private static final VoxelShape NORTH_SHAPE = Block.box(4.0, 4.0, 5.0, 12.0, 12.0, 16.0);
     private static final VoxelShape SOUTH_SHAPE = Block.box(4.0, 4.0, 0.0, 12.0, 12.0, 11.0);
@@ -29,7 +38,9 @@ public class PitonBlock extends HorizontalDirectionalBlock {
 
     public PitonBlock() {
         super(BlockBehaviour.Properties.copy(Blocks.IRON_BARS).noOcclusion());
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+        registerDefaultState(stateDefinition.any()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(GUIDE_CLIP, false));
     }
 
     @Override
@@ -65,6 +76,31 @@ public class PitonBlock extends HorizontalDirectionalBlock {
     }
 
     @Override
+    public InteractionResult use(
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hit
+    ) {
+        var stack = player.getItemInHand(hand);
+        if (state.getBlock().getClass() != PitonBlock.class
+                || state.getValue(GUIDE_CLIP)
+                || !(stack.getItem() instanceof BlockItem blockItem)
+                || !(blockItem.getBlock() instanceof GuideClipBlock)) {
+            return InteractionResult.PASS;
+        }
+        if (!level.isClientSide) {
+            level.setBlock(pos, state.setValue(GUIDE_CLIP, true), Block.UPDATE_ALL);
+            if (!player.getAbilities().instabuild) {
+                stack.shrink(1);
+            }
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return switch (state.getValue(FACING)) {
             case NORTH -> NORTH_SHAPE;
@@ -73,6 +109,11 @@ public class PitonBlock extends HorizontalDirectionalBlock {
             case EAST -> EAST_SHAPE;
             default -> NORTH_SHAPE;
         };
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Shapes.empty();
     }
 
     @Override
@@ -87,6 +128,6 @@ public class PitonBlock extends HorizontalDirectionalBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, GUIDE_CLIP);
     }
 }
