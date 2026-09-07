@@ -1,6 +1,7 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
 import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
+import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -69,7 +70,7 @@ public final class RopeCoilItem extends Item {
         BlockState anchorState = level.getBlockState(anchorPos);
         Player player = context.getPlayer();
 
-        if (RopeAnchor.isPiton(anchorState) && player != null && player.isShiftKeyDown()) {
+        if (RopeAnchor.isRouteAnchor(anchorState) && player != null && player.isShiftKeyDown()) {
             if (level.isClientSide) {
                 return InteractionResult.SUCCESS;
             }
@@ -83,6 +84,11 @@ public final class RopeCoilItem extends Item {
                     anchorPos,
                     anchorState
             );
+        }
+
+        // M4.1 pulleys are routed topology only; hanging/free-end pulley behavior belongs with the shared-length solver.
+        if (RopeAnchor.isPulley(anchorState)) {
+            return InteractionResult.PASS;
         }
 
         Direction facing = RopeAnchor.facing(anchorState);
@@ -167,7 +173,7 @@ public final class RopeCoilItem extends Item {
         }
 
         BlockState startState = level.getBlockState(startPos);
-        if (!RopeAnchor.isPiton(startState)) {
+        if (!RopeAnchor.isRouteAnchor(startState)) {
             selectRouteStart(stack, dimension, currentPos);
             routeMessage(player, "message.spelunking_rope.route_selected");
             return InteractionResult.CONSUME;
@@ -185,7 +191,12 @@ public final class RopeCoilItem extends Item {
             return InteractionResult.CONSUME;
         }
 
-        FixedRopeSavedData.get(level).addRope(start, end, allocatedLength);
+        RopeSpanResult result = addRouteSpan(level, start, startState, end, currentState, allocatedLength);
+        if (!result.created()) {
+            routeMessage(player, "message.spelunking_rope.pulley_full");
+            return InteractionResult.CONSUME;
+        }
+
         clearRouteSelection(stack);
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
@@ -193,6 +204,27 @@ public final class RopeCoilItem extends Item {
         snapshotBroadcaster.accept(level);
         routeMessage(player, "message.spelunking_rope.route_created");
         return InteractionResult.CONSUME;
+    }
+
+    private static RopeSpanResult addRouteSpan(
+            ServerLevel level,
+            BlockAttachment start,
+            BlockState startState,
+            BlockAttachment end,
+            BlockState endState,
+            double allocatedLength
+    ) {
+        return new RopeSpanResult(FixedRopeSavedData.get(level).addRouteRope(
+                start,
+                routeNodeType(startState),
+                end,
+                routeNodeType(endState),
+                allocatedLength
+        ) != null);
+    }
+
+    private static RopeNode.Type routeNodeType(BlockState state) {
+        return RopeAnchor.isPulley(state) ? RopeNode.Type.PULLEY : RopeNode.Type.FIXED_ANCHOR;
     }
 
     private static RouteSelection readRouteSelection(ItemStack stack) {
@@ -247,6 +279,9 @@ public final class RopeCoilItem extends Item {
     }
 
     private record RouteSelection(String dimension, long pos) {
+    }
+
+    private record RopeSpanResult(boolean created) {
     }
 
     static final class RouteLength {
