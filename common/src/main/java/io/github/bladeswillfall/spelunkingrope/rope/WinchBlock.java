@@ -6,20 +6,39 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.Objects;
 import java.util.function.Consumer;
 
 public final class WinchBlock extends PitonBlock {
     private static final double STEP = 1.0;
+    private static final VoxelShape NORTH_SHAPE = Block.box(3.0, 3.0, 7.0, 15.0, 13.0, 16.0);
+    private static final VoxelShape SOUTH_SHAPE = Block.box(1.0, 3.0, 0.0, 13.0, 13.0, 9.0);
+    private static final VoxelShape WEST_SHAPE = Block.box(7.0, 3.0, 1.0, 16.0, 13.0, 13.0);
+    private static final VoxelShape EAST_SHAPE = Block.box(0.0, 3.0, 3.0, 9.0, 13.0, 15.0);
 
     private final Consumer<ServerLevel> snapshotBroadcaster;
 
     public WinchBlock(Consumer<ServerLevel> snapshotBroadcaster) {
         this.snapshotBroadcaster = Objects.requireNonNull(snapshotBroadcaster, "snapshotBroadcaster");
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return switch (state.getValue(FACING)) {
+            case NORTH -> NORTH_SHAPE;
+            case SOUTH -> SOUTH_SHAPE;
+            case WEST -> WEST_SHAPE;
+            case EAST -> EAST_SHAPE;
+            default -> NORTH_SHAPE;
+        };
     }
 
     @Override
