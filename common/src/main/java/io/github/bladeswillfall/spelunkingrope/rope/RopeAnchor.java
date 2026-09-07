@@ -40,6 +40,10 @@ public final class RopeAnchor {
         return isPiton(state) || isPulley(state) || isWinch(state);
     }
 
+    public static boolean isGuideAnchor(BlockState state) {
+        return isGuideClip(state) || isPiton(state);
+    }
+
     public static Direction facing(BlockState state) {
         if (isRouteAnchor(state)) {
             return state.getValue(PitonBlock.FACING);
@@ -66,6 +70,16 @@ public final class RopeAnchor {
             return winchAttachment(anchorPos, facing);
         }
         return attachment(anchorPos, facing);
+    }
+
+    static BlockAttachment guideAttachment(BlockPos anchorPos, BlockState state) {
+        if (isGuideClip(state)) {
+            return guideAttachment(anchorPos, state.getValue(PitonBlock.FACING));
+        }
+        if (isPiton(state)) {
+            return attachment(anchorPos, state.getValue(PitonBlock.FACING));
+        }
+        throw new IllegalArgumentException("Block state is not a guide anchor");
     }
 
     static BlockAttachment pulleyAttachment(BlockPos anchorPos, Direction facing) {
