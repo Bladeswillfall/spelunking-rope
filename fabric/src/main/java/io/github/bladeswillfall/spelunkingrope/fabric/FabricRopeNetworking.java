@@ -3,6 +3,7 @@ package io.github.bladeswillfall.spelunkingrope.fabric;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSavedData;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshot;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshotCodec;
+import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.RappelPackets;
 import io.github.bladeswillfall.spelunkingrope.rope.RappelServerController;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeAnchor;
@@ -43,7 +44,24 @@ public final class FabricRopeNetworking {
                 return InteractionResult.PASS;
             }
             BlockPos hookPos = hitResult.getBlockPos();
-            var facing = RopeAnchor.facing(level.getBlockState(hookPos));
+            var state = level.getBlockState(hookPos);
+            var guideFacing = RopeAnchor.guideFacing(state);
+            if (guideFacing != null) {
+                if (!player.isShiftKeyDown()) {
+                    return InteractionResult.PASS;
+                }
+                if (level.isClientSide) {
+                    return InteractionResult.SUCCESS;
+                }
+                ServerPlayer serverPlayer = (ServerPlayer) player;
+                if (!GuideCordItem.retrieveAtClip(serverPlayer, hookPos, guideFacing)) {
+                    return InteractionResult.PASS;
+                }
+                broadcastSnapshot(serverPlayer.serverLevel());
+                return InteractionResult.SUCCESS;
+            }
+
+            var facing = RopeAnchor.facing(state);
             if (facing == null) {
                 return InteractionResult.PASS;
             }
