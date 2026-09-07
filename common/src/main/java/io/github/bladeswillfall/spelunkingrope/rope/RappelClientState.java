@@ -14,6 +14,7 @@ public final class RappelClientState {
     private double anchorZ;
     private double currentLength;
     private double maxLength;
+    private double traverseSpeed;
 
     private RappelClientState() {
     }
@@ -31,6 +32,7 @@ public final class RappelClientState {
         anchorZ = state.anchorZ();
         currentLength = state.currentLength();
         maxLength = state.maxLength();
+        traverseSpeed = state.traverseSpeed();
     }
 
     public void clear() {
@@ -42,6 +44,7 @@ public final class RappelClientState {
         anchorZ = 0.0;
         currentLength = 0.0;
         maxLength = 0.0;
+        traverseSpeed = 0.0;
     }
 
     public boolean active() {
@@ -80,6 +83,10 @@ public final class RappelClientState {
         return maxLength;
     }
 
+    public double traverseSpeed() {
+        return traverseSpeed;
+    }
+
     public boolean atFreeEnd() {
         return rappelling() && currentLength >= maxLength - FREE_END_EPSILON;
     }
@@ -99,9 +106,10 @@ public final class RappelClientState {
         }
     }
 
-    public void setTraverseDistance(double distance) {
-        if (traversing() && Double.isFinite(distance)) {
+    public void setTraverseMotion(double distance, double speed) {
+        if (traversing() && Double.isFinite(distance) && Double.isFinite(speed)) {
             currentLength = Math.max(0.0, Math.min(maxLength, distance));
+            traverseSpeed = speed;
         }
     }
 }

@@ -3,6 +3,7 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
+import io.github.bladeswillfall.spelunkingrope.core.traversal.ZiplineMotion;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -169,11 +170,12 @@ public final class RappelClientController {
             inputSender.accept(new RappelPackets.Input(movement, false, false));
         }
 
-        double nextDistance = RappelServerController.adjustTraverseDistance(
-                state.currentLength(),
-                state.maxLength(),
+        double nextSpeed = ZiplineMotion.integrateSpeed(
+                state.traverseSpeed(),
+                TRAVERSE_CURRENT[4],
                 movement
         );
+        double nextDistance = ZiplineMotion.clampDistance(state.currentLength(), state.maxLength(), nextSpeed);
         if (!ropes.sampleSpan(state.spanId(), nextDistance, TRAVERSE_TARGET, 0)) {
             return;
         }
@@ -192,10 +194,12 @@ public final class RappelClientController {
                 targetY = TRAVERSE_CURRENT[1] - RappelServerController.TRAVERSE_HANG_OFFSET;
                 targetZ = TRAVERSE_CURRENT[2];
                 nextDistance = state.currentLength();
+                nextSpeed = 0.0;
             }
         }
 
-        state.setTraverseDistance(nextDistance);
+        nextSpeed = ZiplineMotion.stopAtEndpoint(nextDistance, state.maxLength(), nextSpeed);
+        state.setTraverseMotion(nextDistance, nextSpeed);
         player.setPos(targetX, targetY, targetZ);
         player.setDeltaMovement(Vec3.ZERO);
         player.fallDistance = 0.0F;
