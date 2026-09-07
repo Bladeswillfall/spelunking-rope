@@ -94,13 +94,28 @@ public final class FixedRopeSavedData extends SavedData {
         return true;
     }
 
+    boolean disconnectAndRemoveOrphanNodes(UUID spanId) {
+        RopeSpan current = span(spanId);
+        if (current == null) {
+            return false;
+        }
+
+        network.disconnect(current.id());
+        removeNodeIfOrphan(current.startNodeId());
+        if (!current.endNodeId().equals(current.startNodeId())) {
+            removeNodeIfOrphan(current.endNodeId());
+        }
+        setDirty();
+        return true;
+    }
+
     public BlockAttachment attachment(UUID nodeId) {
         return attachments.get(Objects.requireNonNull(nodeId, "nodeId"));
     }
 
     RopeSpan span(UUID spanId) {
         Objects.requireNonNull(spanId, "spanId");
-        // ponytail: extension is a rare interaction; avoid another long-lived span index until lookup volume justifies it.
+        // ponytail: extension/retrieval are rare interactions; avoid another long-lived span index until lookup volume justifies it.
         for (RopeSpan span : network.spans()) {
             if (span.id().equals(spanId)) {
                 return span;
@@ -222,6 +237,17 @@ public final class FixedRopeSavedData extends SavedData {
             );
         }
         return data;
+    }
+
+    private void removeNodeIfOrphan(UUID nodeId) {
+        // ponytail: retrieval is rare; a linear scan is cheaper than another persistent topology index/API.
+        for (RopeSpan span : network.spans()) {
+            if (span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) {
+                return;
+            }
+        }
+        network.removeNode(nodeId);
+        attachments.remove(nodeId);
     }
 
     private BlockAttachment requireAttachment(UUID nodeId) {

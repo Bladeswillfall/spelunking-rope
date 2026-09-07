@@ -48,18 +48,7 @@ public final class RappelServerController {
         double anchorY = hookPos.getY() + 0.5;
         double anchorZ = column.getZ() + 0.5;
         FixedRopeSavedData data = FixedRopeSavedData.get(level);
-
-        RopeSpan match = null;
-        for (RopeSpan span : data.spans()) {
-            BlockAttachment start = data.attachment(span.startNodeId());
-            if (start != null
-                    && close(start.worldX(), anchorX)
-                    && close(start.worldY(), anchorY)
-                    && close(start.worldZ(), anchorZ)) {
-                match = span;
-                break;
-            }
-        }
+        RopeSpan match = findHookSpan(data, anchorX, anchorY, anchorZ);
         if (match == null) {
             return false;
         }
@@ -82,6 +71,38 @@ public final class RappelServerController {
         SESSIONS.put(player.getUUID(), session);
         player.fallDistance = 0.0F;
         stateSender.accept(player, session.state());
+        return true;
+    }
+
+    public static boolean retrieveAtHook(ServerPlayer player, BlockPos hookPos, Direction facing) {
+        if (player.isSpectator() || !player.isAlive()) {
+            return false;
+        }
+
+        ServerLevel level = player.serverLevel();
+        BlockPos column = hookPos.relative(facing);
+        double anchorX = column.getX() + 0.5;
+        double anchorY = hookPos.getY() + 0.5;
+        double anchorZ = column.getZ() + 0.5;
+        FixedRopeSavedData data = FixedRopeSavedData.get(level);
+        RopeSpan match = findHookSpan(data, anchorX, anchorY, anchorZ);
+        if (match == null || spanInUse(level, match.id())) {
+            return false;
+        }
+
+        BlockAttachment start = data.attachment(match.startNodeId());
+        BlockAttachment end = data.attachment(match.endNodeId());
+        if (start == null || end == null) {
+            return false;
+        }
+        int recoveredCoils = RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(
+                start.blockPos().getY(),
+                end.blockPos().getY()
+        );
+        if (!data.disconnectAndRemoveOrphanNodes(match.id())) {
+            return false;
+        }
+        RopeCoilItem.giveRecoveredCoils(player, recoveredCoils);
         return true;
     }
 
@@ -223,6 +244,28 @@ public final class RappelServerController {
             return Math.min(maxLength, currentLength + DESCEND_PER_TICK);
         }
         return currentLength;
+    }
+
+    private static RopeSpan findHookSpan(FixedRopeSavedData data, double anchorX, double anchorY, double anchorZ) {
+        for (RopeSpan span : data.spans()) {
+            BlockAttachment start = data.attachment(span.startNodeId());
+            if (start != null
+                    && close(start.worldX(), anchorX)
+                    && close(start.worldY(), anchorY)
+                    && close(start.worldZ(), anchorZ)) {
+                return span;
+            }
+        }
+        return null;
+    }
+
+    private static boolean spanInUse(ServerLevel level, UUID spanId) {
+        for (Session session : SESSIONS.values()) {
+            if (session.level == level && session.spanId.equals(spanId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void applyWallPush(ServerPlayer player) {

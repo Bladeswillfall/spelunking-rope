@@ -1,7 +1,10 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
+import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -10,6 +13,7 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -21,6 +25,7 @@ import java.util.function.IntPredicate;
 
 public final class RopeCoilItem extends Item {
     static final int MAX_DEPLOY_BLOCKS = 32;
+    private static final ResourceLocation ROPE_COIL_ID = new ResourceLocation(SpelunkingRope.MOD_ID, "rope_coil");
 
     private final Consumer<ServerLevel> snapshotBroadcaster;
 
@@ -98,6 +103,28 @@ public final class RopeCoilItem extends Item {
         return InteractionResult.CONSUME;
     }
 
+    static void giveRecoveredCoils(ServerPlayer player, int count) {
+        Objects.requireNonNull(player, "player");
+        if (count <= 0 || player.getAbilities().instabuild) {
+            return;
+        }
+
+        Item ropeCoil = BuiltInRegistries.ITEM.get(ROPE_COIL_ID);
+        if (ropeCoil == Items.AIR) {
+            throw new IllegalStateException("Rope coil item is not registered");
+        }
+        int maxStack = ropeCoil.getMaxStackSize();
+        int remaining = count;
+        while (remaining > 0) {
+            int batch = Math.min(remaining, maxStack);
+            ItemStack recovered = new ItemStack(ropeCoil, batch);
+            if (!player.addItem(recovered)) {
+                player.drop(recovered, false);
+            }
+            remaining -= batch;
+        }
+    }
+
     static final class DropScan {
         private DropScan() {
         }
@@ -111,6 +138,11 @@ public final class RopeCoilItem extends Item {
                 }
             }
             return lowestY;
+        }
+
+        static int recoveredCoilsForVerticalBlockDrop(int startBlockY, int endBlockY) {
+            int blockDrop = Math.max(0, startBlockY - endBlockY);
+            return Math.max(1, (blockDrop + MAX_DEPLOY_BLOCKS - 1) / MAX_DEPLOY_BLOCKS);
         }
     }
 }

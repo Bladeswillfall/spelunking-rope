@@ -27,19 +27,19 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Dense dirty-span runtime and 1k/10k benchmark
 - [x] Fixed-rope client/server snapshot synchronization
 - [x] Add/remove nodes
-- [ ] Split/join rope networks
+- [x] Split/join rope networks
 - [x] Debug renderer
 - [x] Core unit tests
 
 ## M2 — Spelunking
 
-- [ ] Rope coil/reel interaction
+- [x] Rope coil/reel interaction
 - [ ] Piton
 - [ ] Reusable anchor
-- [ ] Hanging rope deployment
-- [ ] Climbing
-- [ ] Controlled rappelling
-- [ ] Rope retrieval
+- [x] Hanging rope deployment
+- [x] Climbing
+- [x] Controlled rappelling
+- [x] Rope retrieval
 - [ ] Basic custom hardware models
 
 ## M3 — Route infrastructure

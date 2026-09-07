@@ -15,4 +15,13 @@ class RopeCoilItemTest {
         assertEquals(-63, RopeCoilItem.DropScan.findDropEndBlockY(-60, -64, y -> y == -64));
         assertEquals(-64, RopeCoilItem.DropScan.findDropEndBlockY(-60, -64, y -> false));
     }
+
+    @Test
+    void countsRecoveredCoilsFromVerticalBlockDrop() {
+        assertEquals(1, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 64));
+        assertEquals(1, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 32));
+        assertEquals(2, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 31));
+        assertEquals(2, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 0));
+        assertEquals(3, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, -1));
+    }
 }
