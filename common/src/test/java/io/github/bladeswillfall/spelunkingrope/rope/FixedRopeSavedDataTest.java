@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ class FixedRopeSavedDataTest {
         assertEquals(FixedRopeSnapshot.NO_DYE, snapshot.spans().get(0).dyeColor());
         assertEquals((byte) 4, snapshot.spans().get(1).dyeColor());
 
-        assertEquals(2, loaded.removeGuideLinesAt(junction));
+        assertEquals(List.of(FixedRopeSnapshot.NO_DYE, (byte) 4), loaded.removeGuideLinesAt(junction));
         assertTrue(loaded.spans().isEmpty());
         assertTrue(loaded.nodes().isEmpty());
     }

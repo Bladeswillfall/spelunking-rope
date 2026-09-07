@@ -98,9 +98,13 @@ public final class DebugRopeRenderer {
             }
 
             boolean guide = clientState.lineTypeAt(slot) == FixedRopeSnapshot.TYPE_GUIDE;
-            int red = guide ? GUIDE_RED : RED;
-            int green = guide ? GUIDE_GREEN : GREEN;
-            int blue = guide ? GUIDE_BLUE : BLUE;
+            byte dyeId = clientState.dyeColorAt(slot);
+            int guideRgb = dyeId == FixedRopeSnapshot.NO_DYE
+                    ? GUIDE_RED << 16 | GUIDE_GREEN << 8 | GUIDE_BLUE
+                    : GuideCordItem.dyeRgb(dyeId);
+            int red = guide ? (guideRgb >> 16) & 0xFF : RED;
+            int green = guide ? (guideRgb >> 8) & 0xFF : GREEN;
+            int blue = guide ? guideRgb & 0xFF : BLUE;
             int spanOffset = slot * coordinatesPerSpan;
             for (int segment = 0; segment < segments; segment++) {
                 int start = spanOffset + segment * 3;

@@ -1,6 +1,7 @@
 {
   "item.spelunking_rope.rope_coil": "Rope Coil",
   "item.spelunking_rope.guide_cord": "Guide Cord",
+  "item.spelunking_rope.guide_cord.colored": "%s Guide Cord",
   "block.spelunking_rope.piton": "Piton",
   "block.spelunking_rope.guide_clip": "Guide Clip",
   "key.spelunking_rope.detach": "Detach from Rope",
