@@ -5,9 +5,9 @@
     { "when": { "facing": "south" }, "apply": { "model": "spelunking_rope:block/piton", "y": 180, "uvlock": true } },
     { "when": { "facing": "west" }, "apply": { "model": "spelunking_rope:block/piton", "y": 270, "uvlock": true } },
 
-    { "when": { "facing": "north", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/guide_clip" } },
-    { "when": { "facing": "east", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/guide_clip", "y": 90, "uvlock": true } },
-    { "when": { "facing": "south", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/guide_clip", "y": 180, "uvlock": true } },
-    { "when": { "facing": "west", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/guide_clip", "y": 270, "uvlock": true } }
+    { "when": { "facing": "north", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/piton_guide_clip" } },
+    { "when": { "facing": "east", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/piton_guide_clip", "y": 90, "uvlock": true } },
+    { "when": { "facing": "south", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/piton_guide_clip", "y": 180, "uvlock": true } },
+    { "when": { "facing": "west", "guide_clip": "true" }, "apply": { "model": "spelunking_rope:block/piton_guide_clip", "y": 270, "uvlock": true } }
   ]
 }
