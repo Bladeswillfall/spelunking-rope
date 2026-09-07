@@ -103,13 +103,6 @@ public final class RopeCoilItem extends Item {
         return InteractionResult.CONSUME;
     }
 
-    static int coilsForVerticalDrop(BlockAttachment start, BlockAttachment end) {
-        Objects.requireNonNull(start, "start");
-        Objects.requireNonNull(end, "end");
-        int blockDrop = Math.max(0, start.blockPos().getY() - end.blockPos().getY());
-        return Math.max(1, (blockDrop + MAX_DEPLOY_BLOCKS - 1) / MAX_DEPLOY_BLOCKS);
-    }
-
     static void giveRecoveredCoils(ServerPlayer player, int count) {
         Objects.requireNonNull(player, "player");
         if (count <= 0 || player.getAbilities().instabuild) {
@@ -145,6 +138,11 @@ public final class RopeCoilItem extends Item {
                 }
             }
             return lowestY;
+        }
+
+        static int recoveredCoilsForVerticalBlockDrop(int startBlockY, int endBlockY) {
+            int blockDrop = Math.max(0, startBlockY - endBlockY);
+            return Math.max(1, (blockDrop + MAX_DEPLOY_BLOCKS - 1) / MAX_DEPLOY_BLOCKS);
         }
     }
 }
