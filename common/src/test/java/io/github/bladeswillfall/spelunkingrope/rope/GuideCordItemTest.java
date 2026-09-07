@@ -1,23 +1,28 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
-import net.minecraft.world.item.DyeColor;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class GuideCordItemTest {
+    private static final int[] PALETTE = {
+            0x101010,
+            0xCC2222,
+            0x22CC22,
+            0x2222CC
+    };
+
     @Test
-    void resolvesAllVanillaDyeColours() {
-        for (DyeColor color : DyeColor.values()) {
-            assertEquals(
-                    (byte) color.getId(),
-                    GuideCordItem.closestDyeId(GuideCordItem.dyeRgb((byte) color.getId()))
-            );
+    void exactPaletteColoursKeepTheirIndex() {
+        for (int index = 0; index < PALETTE.length; index++) {
+            assertEquals(index, GuideCordColors.closestPaletteIndex(PALETTE[index], PALETTE));
         }
     }
 
     @Test
-    void mixedRgbChoosesNearestMinecraftDye() {
-        assertEquals((byte) DyeColor.RED.getId(), GuideCordItem.closestDyeId(0xFF1010));
+    void mixedRgbChoosesNearestPaletteEntry() {
+        assertEquals(1, GuideCordColors.closestPaletteIndex(0xF01818, PALETTE));
+        assertEquals(2, GuideCordColors.closestPaletteIndex(0x18F018, PALETTE));
+        assertEquals(3, GuideCordColors.closestPaletteIndex(0x1818F0, PALETTE));
     }
 }
