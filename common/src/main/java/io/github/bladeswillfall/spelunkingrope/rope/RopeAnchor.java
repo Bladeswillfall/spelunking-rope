@@ -11,15 +11,23 @@ public final class RopeAnchor {
     }
 
     public static boolean isPiton(BlockState state) {
-        return state.getBlock() instanceof PitonBlock && !isGuideClip(state);
+        return state.getBlock() instanceof PitonBlock && !isGuideClip(state) && !isPulley(state);
     }
 
     public static boolean isGuideClip(BlockState state) {
         return state.getBlock() instanceof GuideClipBlock;
     }
 
+    public static boolean isPulley(BlockState state) {
+        return state.getBlock() instanceof PulleyBlock;
+    }
+
+    public static boolean isRouteAnchor(BlockState state) {
+        return isPiton(state) || isPulley(state);
+    }
+
     public static Direction facing(BlockState state) {
-        if (isPiton(state)) {
+        if (isRouteAnchor(state)) {
             return state.getValue(PitonBlock.FACING);
         }
         if (state.is(Blocks.TRIPWIRE_HOOK)) {
