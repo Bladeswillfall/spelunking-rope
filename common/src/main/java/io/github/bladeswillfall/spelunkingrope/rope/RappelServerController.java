@@ -4,6 +4,7 @@ import io.github.bladeswillfall.spelunkingrope.core.geometry.CatenarySampler;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
+import io.github.bladeswillfall.spelunkingrope.core.traversal.ZiplineMotion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
@@ -23,7 +24,6 @@ public final class RappelServerController {
     private static final double CLIMB_PER_TICK = 0.12;
     private static final double DESCEND_PER_TICK = 0.18;
     static final double TRAVERSE_HANG_OFFSET = 1.25;
-    private static final double TRAVERSE_PER_TICK = 0.14;
     private static final double CORRECTION_TOLERANCE = 0.35;
     private static final double TRAVERSE_CORRECTION_TOLERANCE = 0.20;
     private static final double ANCHOR_EPSILON = 1.0e-6;
@@ -142,7 +142,8 @@ public final class RappelServerController {
                 anchorZ,
                 maxLength,
                 currentLength,
-                null
+                null,
+                0.0
         );
         SESSIONS.put(player.getUUID(), session);
         player.fallDistance = 0.0F;
@@ -206,6 +207,12 @@ public final class RappelServerController {
             return false;
         }
 
+        Vec3 velocity = player.getDeltaMovement();
+        double pathSpeed = ZiplineMotion.clampSpeed(
+                velocity.x * CONSTRAINT_OUTPUT[3]
+                        + velocity.y * CONSTRAINT_OUTPUT[4]
+                        + velocity.z * CONSTRAINT_OUTPUT[5]
+        );
         Session session = new Session(
                 player.serverLevel(),
                 span.id(),
@@ -215,7 +222,8 @@ public final class RappelServerController {
                 0.0,
                 pathLength,
                 pathDistance,
-                geometry
+                geometry,
+                pathSpeed
         );
         SESSIONS.put(player.getUUID(), session);
         player.teleportTo(targetX, targetY, targetZ);
@@ -364,7 +372,7 @@ public final class RappelServerController {
             }
 
             if (session.mode == RappelPackets.MODE_TRAVERSE) {
-                tickTraverse(player, session);
+                tickTraverse(player, session, stateSender);
                 continue;
             }
 
@@ -412,18 +420,25 @@ public final class RappelServerController {
         return currentLength;
     }
 
-    public static double adjustTraverseDistance(double currentDistance, double pathLength, byte movement) {
-        if (movement > 0) {
-            return Math.min(pathLength, currentDistance + TRAVERSE_PER_TICK);
-        }
-        if (movement < 0) {
-            return Math.max(0.0, currentDistance - TRAVERSE_PER_TICK);
-        }
-        return currentDistance;
-    }
-
-    private static void tickTraverse(ServerPlayer player, Session session) {
-        double nextDistance = adjustTraverseDistance(session.currentLength, session.maxLength, session.vertical);
+    private static void tickTraverse(
+            ServerPlayer player,
+            Session session,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
+        PolylineTraversal.sample(
+                session.pathGeometry,
+                0,
+                TRAVERSE_SEGMENTS + 1,
+                session.currentLength,
+                CONSTRAINT_OUTPUT,
+                0
+        );
+        double nextSpeed = ZiplineMotion.integrateSpeed(
+                session.traverseSpeed,
+                CONSTRAINT_OUTPUT[4],
+                session.vertical
+        );
+        double nextDistance = ZiplineMotion.clampDistance(session.currentLength, session.maxLength, nextSpeed);
         PolylineTraversal.sample(
                 session.pathGeometry,
                 0,
@@ -437,9 +452,18 @@ public final class RappelServerController {
         double targetZ = CONSTRAINT_OUTPUT[2];
         player.fallDistance = 0.0F;
         if (!canOccupy(player, targetX, targetY, targetZ)) {
+            if (session.traverseSpeed != 0.0) {
+                session.traverseSpeed = 0.0;
+                stateSender.accept(player, session.state());
+            }
             return;
         }
+
         session.currentLength = nextDistance;
+        session.traverseSpeed = ZiplineMotion.stopAtEndpoint(nextDistance, session.maxLength, nextSpeed);
+        if (session.traverseSpeed != nextSpeed) {
+            stateSender.accept(player, session.state());
+        }
 
         double dx = targetX - player.getX();
         double dy = targetY - player.getY();
@@ -544,6 +568,7 @@ public final class RappelServerController {
         private final double[] pathGeometry;
         private double maxLength;
         private double currentLength;
+        private double traverseSpeed;
         private byte vertical;
         private int pushCooldownTicks;
 
@@ -556,7 +581,8 @@ public final class RappelServerController {
                 double anchorZ,
                 double maxLength,
                 double currentLength,
-                double[] pathGeometry
+                double[] pathGeometry,
+                double traverseSpeed
         ) {
             this.level = level;
             this.spanId = spanId;
@@ -567,11 +593,12 @@ public final class RappelServerController {
             this.maxLength = maxLength;
             this.currentLength = currentLength;
             this.pathGeometry = pathGeometry;
+            this.traverseSpeed = traverseSpeed;
         }
 
         private RappelPackets.State state() {
             if (mode == RappelPackets.MODE_TRAVERSE) {
-                return RappelPackets.State.traverse(spanId, currentLength, maxLength);
+                return RappelPackets.State.traverse(spanId, currentLength, maxLength, traverseSpeed);
             }
             return new RappelPackets.State(
                     true,
@@ -581,7 +608,8 @@ public final class RappelServerController {
                     anchorY,
                     anchorZ,
                     currentLength,
-                    maxLength
+                    maxLength,
+                    0.0
             );
         }
     }
