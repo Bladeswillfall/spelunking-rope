@@ -86,8 +86,8 @@ public final class RopeCoilItem extends Item {
             );
         }
 
-        // M4.1 pulleys are routed topology only; hanging/free-end pulley behavior belongs with the shared-length solver.
-        if (RopeAnchor.isPulley(anchorState)) {
+        // Mechanical route hardware does not create a second hanging-rope topology on normal coil use.
+        if (RopeAnchor.isPulley(anchorState) || RopeAnchor.isWinch(anchorState)) {
             return InteractionResult.PASS;
         }
 
@@ -198,7 +198,9 @@ public final class RopeCoilItem extends Item {
                 routeNodeType(currentState),
                 allocatedLength
         ) == null) {
-            routeMessage(player, "message.spelunking_rope.pulley_full");
+            routeMessage(player, RopeAnchor.isWinch(startState) || RopeAnchor.isWinch(currentState)
+                    ? "message.spelunking_rope.winch_full"
+                    : "message.spelunking_rope.pulley_full");
             return InteractionResult.CONSUME;
         }
 
@@ -212,7 +214,10 @@ public final class RopeCoilItem extends Item {
     }
 
     private static RopeNode.Type routeNodeType(BlockState state) {
-        return RopeAnchor.isPulley(state) ? RopeNode.Type.PULLEY : RopeNode.Type.FIXED_ANCHOR;
+        if (RopeAnchor.isPulley(state)) {
+            return RopeNode.Type.PULLEY;
+        }
+        return RopeAnchor.isWinch(state) ? RopeNode.Type.WINCH : RopeNode.Type.FIXED_ANCHOR;
     }
 
     private static RouteSelection readRouteSelection(ItemStack stack) {

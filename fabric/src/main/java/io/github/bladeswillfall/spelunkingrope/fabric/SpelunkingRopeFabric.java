@@ -6,6 +6,7 @@ import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.PitonBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.PulleyBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeCoilItem;
+import io.github.bladeswillfall.spelunkingrope.rope.WinchBlock;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,6 +30,14 @@ public final class SpelunkingRopeFabric implements ModInitializer {
         ResourceLocation pulleyId = new ResourceLocation(SpelunkingRope.MOD_ID, "pulley");
         PulleyBlock pulley = Registry.register(BuiltInRegistries.BLOCK, pulleyId, new PulleyBlock());
         Registry.register(BuiltInRegistries.ITEM, pulleyId, new BlockItem(pulley, new Item.Properties()));
+
+        ResourceLocation winchId = new ResourceLocation(SpelunkingRope.MOD_ID, "winch");
+        WinchBlock winch = Registry.register(
+                BuiltInRegistries.BLOCK,
+                winchId,
+                new WinchBlock(FabricRopeNetworking::broadcastSnapshot)
+        );
+        Registry.register(BuiltInRegistries.ITEM, winchId, new BlockItem(winch, new Item.Properties()));
 
         Registry.register(
                 BuiltInRegistries.ITEM,

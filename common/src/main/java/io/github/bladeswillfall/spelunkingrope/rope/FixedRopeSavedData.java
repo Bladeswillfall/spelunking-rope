@@ -22,6 +22,12 @@ import java.util.UUID;
 public final class FixedRopeSavedData extends SavedData {
     static final int SCHEMA_VERSION = 3;
 
+    enum WinchAdjustment {
+        NO_ROPE,
+        LIMIT,
+        CHANGED
+    }
+
     private static final String DATA_NAME = "spelunking_rope";
     private static final String TAG_SCHEMA_VERSION = "schema_version";
     private static final String TAG_NODES = "nodes";
@@ -81,10 +87,10 @@ public final class FixedRopeSavedData extends SavedData {
             return null;
         }
 
-        // ponytail: route placement is rare; scan by attachment until mutation profiling justifies a pulley index.
-        RopeNode startNode = reusablePulleyNode(start, startType);
-        RopeNode endNode = reusablePulleyNode(end, endType);
-        if ((startNode != null && pulleyFull(startNode)) || (endNode != null && pulleyFull(endNode))) {
+        // ponytail: route placement is rare; scan by attachment until mutation profiling justifies a hardware index.
+        RopeNode startNode = reusableHardwareNode(start, startType);
+        RopeNode endNode = reusableHardwareNode(end, endType);
+        if ((startNode != null && routeNodeFull(startNode)) || (endNode != null && routeNodeFull(endNode))) {
             return null;
         }
         if (startNode != null && endNode != null && startNode.id().equals(endNode.id())) {
@@ -254,6 +260,66 @@ public final class FixedRopeSavedData extends SavedData {
         attachments.put(nodeId, nextAttachment);
         setDirty();
         return true;
+    }
+
+    WinchAdjustment adjustWinch(BlockAttachment winchAttachment, double requestedDeployedDelta) {
+        Objects.requireNonNull(winchAttachment, "winchAttachment");
+        requireFiniteAttachment(winchAttachment);
+        if (!Double.isFinite(requestedDeployedDelta)) {
+            throw new IllegalArgumentException("requestedDeployedDelta must be finite");
+        }
+
+        RopeNode winch = reusableHardwareNode(winchAttachment, RopeNode.Type.WINCH);
+        if (winch == null) {
+            return WinchAdjustment.NO_ROPE;
+        }
+
+        RopeSpan incident = null;
+        for (RopeSpan candidate : network.spans()) {
+            if (isGuideLine(candidate.id())) {
+                continue;
+            }
+            if (candidate.startNodeId().equals(winch.id()) || candidate.endNodeId().equals(winch.id())) {
+                if (incident != null) {
+                    throw new IllegalStateException("Winch has more than one structural span: " + winch.id());
+                }
+                incident = candidate;
+            }
+        }
+        if (incident == null) {
+            return WinchAdjustment.NO_ROPE;
+        }
+
+        UUID otherNodeId = incident.startNodeId().equals(winch.id())
+                ? incident.endNodeId()
+                : incident.startNodeId();
+        BlockAttachment other = requireAttachment(otherNodeId);
+        double dx = winchAttachment.worldX() - other.worldX();
+        double dy = winchAttachment.worldY() - other.worldY();
+        double dz = winchAttachment.worldZ() - other.worldZ();
+        double straightDistance = Math.hypot(Math.hypot(dx, dz), dy);
+        double currentLength = incident.allocatedLength();
+        double tolerance = 1.0e-9 * Math.max(1.0, straightDistance);
+        if (currentLength + tolerance < straightDistance) {
+            throw new IllegalStateException("Winch span is shorter than its endpoint distance: " + incident.id());
+        }
+
+        double nextLength;
+        if (requestedDeployedDelta > 0.0) {
+            nextLength = Math.min(RopeCoilItem.MAX_DEPLOY_BLOCKS, currentLength + requestedDeployedDelta);
+        } else if (requestedDeployedDelta < 0.0) {
+            nextLength = Math.max(straightDistance, currentLength + requestedDeployedDelta);
+        } else {
+            return WinchAdjustment.LIMIT;
+        }
+
+        if (Math.abs(nextLength - currentLength) <= 1.0e-12 * Math.max(1.0, currentLength)) {
+            return WinchAdjustment.LIMIT;
+        }
+
+        network.replaceSpanLength(incident.id(), nextLength);
+        setDirty();
+        return WinchAdjustment.CHANGED;
     }
 
     public boolean disconnect(UUID spanId) {
@@ -466,27 +532,29 @@ public final class FixedRopeSavedData extends SavedData {
         return node;
     }
 
-    private RopeNode reusablePulleyNode(BlockAttachment attachment, RopeNode.Type type) {
-        if (type != RopeNode.Type.PULLEY) {
+    private RopeNode reusableHardwareNode(BlockAttachment attachment, RopeNode.Type type) {
+        if (type != RopeNode.Type.PULLEY && type != RopeNode.Type.WINCH) {
             return null;
         }
         for (RopeNode node : network.nodes()) {
-            if (node.type() == RopeNode.Type.PULLEY && attachment.equals(attachments.get(node.id()))) {
+            if (node.type() == type && attachment.equals(attachments.get(node.id()))) {
                 return node;
             }
         }
         return null;
     }
 
-    private boolean pulleyFull(RopeNode node) {
-        int structuralIncidents = 0;
+    private boolean routeNodeFull(RopeNode node) {
+        int maxIncidents = switch (node.type()) {
+            case PULLEY -> 2;
+            case WINCH -> 1;
+            default -> Integer.MAX_VALUE;
+        };
+        int incidents = 0;
         for (RopeSpan span : network.spans()) {
-            if (isGuideLine(span.id())) {
-                continue;
-            }
             if (span.startNodeId().equals(node.id()) || span.endNodeId().equals(node.id())) {
-                structuralIncidents++;
-                if (structuralIncidents >= 2) {
+                incidents++;
+                if (incidents >= maxIncidents) {
                     return true;
                 }
             }
