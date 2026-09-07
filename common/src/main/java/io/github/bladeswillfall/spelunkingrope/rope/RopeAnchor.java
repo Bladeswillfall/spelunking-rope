@@ -7,7 +7,15 @@ import net.minecraft.world.level.block.TripWireHookBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 public final class RopeAnchor {
-    private static final double HARDWARE_FACE_OFFSET = 0.45;
+    private static final double SIXTEENTH = 1.0 / 16.0;
+    private static final double PITON_ROPE_Y = 8.0 * SIXTEENTH;
+    private static final double PITON_ROPE_DEPTH = 6.0 * SIXTEENTH;
+    private static final double GUIDE_ROPE_Y = 8.0 * SIXTEENTH;
+    private static final double GUIDE_ROPE_DEPTH = 8.0 * SIXTEENTH;
+    private static final double PULLEY_ROPE_Y = 3.0 * SIXTEENTH;
+    private static final double PULLEY_ROPE_DEPTH = 9.0 * SIXTEENTH;
+    private static final double WINCH_ROPE_Y = 4.0 * SIXTEENTH;
+    private static final double WINCH_ROPE_DEPTH = 10.0 * SIXTEENTH;
 
     private RopeAnchor() {
     }
@@ -51,27 +59,45 @@ public final class RopeAnchor {
         if (facing == null) {
             throw new IllegalArgumentException("Block state is not a rope route anchor");
         }
-        return isPulley(state) || isWinch(state) ? hardwareAttachment(anchorPos, facing) : attachment(anchorPos, facing);
+        if (isPulley(state)) {
+            return pulleyAttachment(anchorPos, facing);
+        }
+        if (isWinch(state)) {
+            return winchAttachment(anchorPos, facing);
+        }
+        return attachment(anchorPos, facing);
     }
 
     static BlockAttachment pulleyAttachment(BlockPos anchorPos, Direction facing) {
-        return hardwareAttachment(anchorPos, facing);
+        return wallAttachment(anchorPos, facing, PULLEY_ROPE_Y, PULLEY_ROPE_DEPTH);
     }
 
-    static BlockAttachment hardwareAttachment(BlockPos anchorPos, Direction facing) {
-        return BlockAttachment.atWorld(
-                anchorPos.getX() + 0.5 + facing.getStepX() * HARDWARE_FACE_OFFSET,
-                anchorPos.getY() + 0.5,
-                anchorPos.getZ() + 0.5 + facing.getStepZ() * HARDWARE_FACE_OFFSET
-        );
+    static BlockAttachment winchAttachment(BlockPos anchorPos, Direction facing) {
+        return wallAttachment(anchorPos, facing, WINCH_ROPE_Y, WINCH_ROPE_DEPTH);
+    }
+
+    static BlockAttachment guideAttachment(BlockPos anchorPos, Direction facing) {
+        return wallAttachment(anchorPos, facing, GUIDE_ROPE_Y, GUIDE_ROPE_DEPTH);
     }
 
     public static BlockAttachment attachment(BlockPos anchorPos, Direction facing) {
-        BlockPos outward = anchorPos.relative(facing);
+        return wallAttachment(anchorPos, facing, PITON_ROPE_Y, PITON_ROPE_DEPTH);
+    }
+
+    private static BlockAttachment wallAttachment(
+            BlockPos anchorPos,
+            Direction facing,
+            double localY,
+            double localDepth
+    ) {
+        if (facing.getAxis().isVertical()) {
+            throw new IllegalArgumentException("Wall hardware facing must be horizontal");
+        }
+        double outward = 0.5 - localDepth;
         return BlockAttachment.atWorld(
-                outward.getX() + 0.5,
-                anchorPos.getY() + 0.5,
-                outward.getZ() + 0.5
+                anchorPos.getX() + 0.5 + facing.getStepX() * outward,
+                anchorPos.getY() + localY,
+                anchorPos.getZ() + 0.5 + facing.getStepZ() * outward
         );
     }
 }
