@@ -1,6 +1,7 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
 import io.github.bladeswillfall.spelunkingrope.core.geometry.CatenarySampler;
+import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
@@ -475,9 +476,11 @@ public final class RappelServerController {
         }
 
         session.currentLength = nextDistance;
-        session.traverseSpeed = ZiplineMotion.stopAtEndpoint(nextDistance, session.maxLength, nextSpeed);
-        if (session.traverseSpeed != nextSpeed) {
-            stateSender.accept(player, session.state());
+        if (!continueAcrossPulley(player, session, nextDistance, nextSpeed, stateSender)) {
+            session.traverseSpeed = ZiplineMotion.stopAtEndpoint(nextDistance, session.maxLength, nextSpeed);
+            if (session.traverseSpeed != nextSpeed) {
+                stateSender.accept(player, session.state());
+            }
         }
 
         double dx = targetX - player.getX();
@@ -489,6 +492,81 @@ public final class RappelServerController {
         player.teleportTo(targetX, targetY, targetZ);
         player.setDeltaMovement(Vec3.ZERO);
         player.hurtMarked = true;
+    }
+
+    private static boolean continueAcrossPulley(
+            ServerPlayer player,
+            Session session,
+            double endpointDistance,
+            double endpointSpeed,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
+        boolean crossingStart = endpointDistance <= FREE_END_EPSILON && endpointSpeed < 0.0;
+        boolean crossingEnd = endpointDistance >= session.maxLength - FREE_END_EPSILON && endpointSpeed > 0.0;
+        if (!crossingStart && !crossingEnd) {
+            return false;
+        }
+
+        FixedRopeSavedData data = FixedRopeSavedData.get(session.level);
+        RopeSpan current = data.span(session.spanId);
+        if (current == null) {
+            return false;
+        }
+        UUID pulleyNodeId = crossingStart ? current.startNodeId() : current.endNodeId();
+        RopeSpan continuation = pulleyContinuation(data, current, pulleyNodeId);
+        if (continuation == null) {
+            return false;
+        }
+
+        BlockAttachment start = data.attachment(continuation.startNodeId());
+        BlockAttachment end = data.attachment(continuation.endNodeId());
+        if (start == null || end == null) {
+            return false;
+        }
+        double[] geometry = sampleSpan(continuation, start, end);
+        double pathLength = PolylineTraversal.length(geometry, 0, TRAVERSE_SEGMENTS + 1);
+        if (!(pathLength > 0.0)) {
+            return false;
+        }
+
+        boolean pulleyIsStart = continuation.startNodeId().equals(pulleyNodeId);
+        session.spanId = continuation.id();
+        session.pathGeometry = geometry;
+        session.maxLength = pathLength;
+        session.currentLength = pulleyIsStart ? 0.0 : pathLength;
+        session.traverseSpeed = Math.copySign(Math.abs(endpointSpeed), pulleyIsStart ? 1.0 : -1.0);
+        stateSender.accept(player, session.state());
+        return true;
+    }
+
+    static RopeSpan pulleyContinuation(FixedRopeSavedData data, RopeSpan current, UUID endpointNodeId) {
+        RopeNode pulley = null;
+        for (RopeNode node : data.nodes()) {
+            if (node.id().equals(endpointNodeId)) {
+                pulley = node;
+                break;
+            }
+        }
+        if (pulley == null
+                || pulley.type() != RopeNode.Type.PULLEY
+                || (!current.startNodeId().equals(endpointNodeId) && !current.endNodeId().equals(endpointNodeId))) {
+            return null;
+        }
+
+        // ponytail: crossing a pulley is rare; reuse the existing topology list instead of maintaining another route index.
+        RopeSpan continuation = null;
+        for (RopeSpan candidate : data.spans()) {
+            if (candidate.id().equals(current.id()) || data.isGuideLine(candidate.id())) {
+                continue;
+            }
+            if (candidate.startNodeId().equals(endpointNodeId) || candidate.endNodeId().equals(endpointNodeId)) {
+                if (continuation != null) {
+                    throw new IllegalStateException("Pulley has more than two structural spans: " + endpointNodeId);
+                }
+                continuation = candidate;
+            }
+        }
+        return continuation;
     }
 
     private static double[] sampleSpan(RopeSpan span, BlockAttachment start, BlockAttachment end) {
@@ -575,12 +653,12 @@ public final class RappelServerController {
 
     private static final class Session {
         private final ServerLevel level;
-        private final UUID spanId;
+        private UUID spanId;
         private final byte mode;
         private final double anchorX;
         private final double anchorY;
         private final double anchorZ;
-        private final double[] pathGeometry;
+        private double[] pathGeometry;
         private double maxLength;
         private double currentLength;
         private double traverseSpeed;
