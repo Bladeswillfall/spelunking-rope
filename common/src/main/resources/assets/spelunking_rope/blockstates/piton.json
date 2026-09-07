@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "spelunking_rope:block/piton" },
+    "facing=east": { "model": "spelunking_rope:block/piton", "y": 90, "uvlock": true },
+    "facing=south": { "model": "spelunking_rope:block/piton", "y": 180, "uvlock": true },
+    "facing=west": { "model": "spelunking_rope:block/piton", "y": 270, "uvlock": true }
+  }
+}

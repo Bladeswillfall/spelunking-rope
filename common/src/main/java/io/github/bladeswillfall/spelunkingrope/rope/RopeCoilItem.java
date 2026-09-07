@@ -16,8 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.TripWireHookBlock;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -56,8 +54,8 @@ public final class RopeCoilItem extends Item {
     public InteractionResult useOn(UseOnContext context) {
         var level = context.getLevel();
         BlockPos hookPos = context.getClickedPos();
-        var hookState = level.getBlockState(hookPos);
-        if (!hookState.is(Blocks.TRIPWIRE_HOOK)) {
+        Direction facing = RopeAnchor.facing(level.getBlockState(hookPos));
+        if (facing == null) {
             return InteractionResult.PASS;
         }
         if (level.isClientSide) {
@@ -65,7 +63,6 @@ public final class RopeCoilItem extends Item {
         }
 
         ServerLevel serverLevel = (ServerLevel) level;
-        Direction facing = hookState.getValue(TripWireHookBlock.FACING);
         BlockPos column = hookPos.relative(facing);
         int endBlockY = DropScan.findDropEndBlockY(
                 hookPos.getY(),

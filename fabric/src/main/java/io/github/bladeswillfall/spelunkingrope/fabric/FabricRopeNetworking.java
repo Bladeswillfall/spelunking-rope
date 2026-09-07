@@ -5,6 +5,7 @@ import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshot;
 import io.github.bladeswillfall.spelunkingrope.rope.FixedRopeSnapshotCodec;
 import io.github.bladeswillfall.spelunkingrope.rope.RappelPackets;
 import io.github.bladeswillfall.spelunkingrope.rope.RappelServerController;
+import io.github.bladeswillfall.spelunkingrope.rope.RopeAnchor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -16,8 +17,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.TripWireHookBlock;
 
 public final class FabricRopeNetworking {
     private FabricRopeNetworking() {
@@ -44,8 +43,8 @@ public final class FabricRopeNetworking {
                 return InteractionResult.PASS;
             }
             BlockPos hookPos = hitResult.getBlockPos();
-            var hookState = level.getBlockState(hookPos);
-            if (!hookState.is(Blocks.TRIPWIRE_HOOK)) {
+            var facing = RopeAnchor.facing(level.getBlockState(hookPos));
+            if (facing == null) {
                 return InteractionResult.PASS;
             }
             if (level.isClientSide) {
@@ -53,7 +52,6 @@ public final class FabricRopeNetworking {
             }
 
             ServerPlayer serverPlayer = (ServerPlayer) player;
-            var facing = hookState.getValue(TripWireHookBlock.FACING);
             if (player.isShiftKeyDown()) {
                 if (!RappelServerController.retrieveAtHook(serverPlayer, hookPos, facing)) {
                     return InteractionResult.PASS;

@@ -1,11 +1,10 @@
 package io.github.bladeswillfall.spelunkingrope.forge;
 
 import io.github.bladeswillfall.spelunkingrope.rope.RappelServerController;
+import io.github.bladeswillfall.spelunkingrope.rope.RopeAnchor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.TripWireHookBlock;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -27,12 +26,11 @@ public final class ForgeRappelEvents {
             return;
         }
 
-        var hookState = event.getLevel().getBlockState(event.getPos());
-        if (!hookState.is(Blocks.TRIPWIRE_HOOK)) {
+        var facing = RopeAnchor.facing(event.getLevel().getBlockState(event.getPos()));
+        if (facing == null) {
             return;
         }
 
-        var facing = hookState.getValue(TripWireHookBlock.FACING);
         if (player.isShiftKeyDown()) {
             if (RappelServerController.retrieveAtHook(player, event.getPos(), facing)) {
                 ForgeRopeNetworking.broadcastSnapshot(player.serverLevel());
