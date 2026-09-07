@@ -3,6 +3,7 @@ package io.github.bladeswillfall.spelunkingrope.core.traversal;
 public final class ZiplineMotion {
     public static final double GRAVITY_PER_TICK = 0.08;
     public static final double INPUT_ACCELERATION = 0.018;
+    public static final double BRAKE_ACCELERATION = 0.10;
     public static final double DAMPING = 0.985;
     public static final double MAX_SPEED = 0.90;
     public static final double STOP_EPSILON = 0.001;
@@ -18,7 +19,13 @@ public final class ZiplineMotion {
             throw new IllegalArgumentException("input must be -1, 0, or 1");
         }
 
-        double next = (speed - GRAVITY_PER_TICK * tangentY + INPUT_ACCELERATION * input) * DAMPING;
+        double gravityDriven = speed - GRAVITY_PER_TICK * tangentY;
+        double inputAcceleration = 0.0;
+        if (input != 0) {
+            boolean braking = gravityDriven != 0.0 && Math.signum(gravityDriven) != Math.signum(input);
+            inputAcceleration = input * (braking ? BRAKE_ACCELERATION : INPUT_ACCELERATION);
+        }
+        double next = (gravityDriven + inputAcceleration) * DAMPING;
         next = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, next));
         return Math.abs(next) < STOP_EPSILON ? 0.0 : next;
     }
