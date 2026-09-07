@@ -18,6 +18,7 @@ class ZiplineMotionTest {
         assertTrue(ZiplineMotion.integrateSpeed(downhill, -0.5, (byte) 1) > downhill);
         assertTrue(ZiplineMotion.integrateSpeed(downhill, -0.5, (byte) -1) < downhill);
         assertTrue(ZiplineMotion.integrateSpeed(0.2, -1.0, (byte) -1) < 0.2);
+        assertEquals(0.0, ZiplineMotion.integrateSpeed(0.0, -0.5, (byte) -1), EPSILON);
     }
 
     @Test
