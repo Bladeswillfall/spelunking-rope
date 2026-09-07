@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:chain" },
+    { "tag": "minecraft:planks" }
+  ],
+  "result": {
+    "item": "spelunking_rope:winch",
+    "count": 1
+  }
+}
