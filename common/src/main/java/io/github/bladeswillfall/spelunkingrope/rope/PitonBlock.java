@@ -22,10 +22,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class PitonBlock extends HorizontalDirectionalBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    private static final VoxelShape NORTH_SHAPE = Block.box(5.0, 5.0, 6.0, 11.0, 11.0, 16.0);
-    private static final VoxelShape SOUTH_SHAPE = Block.box(5.0, 5.0, 0.0, 11.0, 11.0, 10.0);
-    private static final VoxelShape WEST_SHAPE = Block.box(6.0, 5.0, 5.0, 16.0, 11.0, 11.0);
-    private static final VoxelShape EAST_SHAPE = Block.box(0.0, 5.0, 5.0, 10.0, 11.0, 11.0);
+    private static final VoxelShape NORTH_SHAPE = Block.box(4.0, 4.0, 5.0, 12.0, 12.0, 16.0);
+    private static final VoxelShape SOUTH_SHAPE = Block.box(4.0, 4.0, 0.0, 12.0, 12.0, 11.0);
+    private static final VoxelShape WEST_SHAPE = Block.box(5.0, 4.0, 4.0, 16.0, 12.0, 12.0);
+    private static final VoxelShape EAST_SHAPE = Block.box(0.0, 4.0, 4.0, 11.0, 12.0, 12.0);
 
     public PitonBlock() {
         super(BlockBehaviour.Properties.copy(Blocks.IRON_BARS).noOcclusion());
