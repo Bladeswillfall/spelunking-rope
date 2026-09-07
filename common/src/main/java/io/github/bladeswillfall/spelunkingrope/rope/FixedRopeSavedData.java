@@ -128,7 +128,6 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.disconnect(current.id());
-        guideColors.remove(current.id());
         removeNodeIfOrphan(current.startNodeId());
         if (!current.endNodeId().equals(current.startNodeId())) {
             removeNodeIfOrphan(current.endNodeId());
@@ -139,7 +138,7 @@ public final class FixedRopeSavedData extends SavedData {
 
     int removeGuideLinesAt(BlockAttachment attachment) {
         Objects.requireNonNull(attachment, "attachment");
-        List<UUID> matches = new ArrayList<>();
+        List<RopeSpan> matches = new ArrayList<>();
         for (RopeSpan span : network.spans()) {
             if (!isGuideLine(span.id())) {
                 continue;
@@ -147,11 +146,17 @@ public final class FixedRopeSavedData extends SavedData {
             BlockAttachment start = attachments.get(span.startNodeId());
             BlockAttachment end = attachments.get(span.endNodeId());
             if (attachment.equals(start) || attachment.equals(end)) {
-                matches.add(span.id());
+                matches.add(span);
             }
         }
-        for (UUID spanId : matches) {
-            disconnectAndRemoveOrphanNodes(spanId);
+        for (RopeSpan match : matches) {
+            network.disconnect(match.id());
+            guideColors.remove(match.id());
+            removeNodeIfOrphan(match.startNodeId());
+            removeNodeIfOrphan(match.endNodeId());
+        }
+        if (!matches.isEmpty()) {
+            setDirty();
         }
         return matches.size();
     }
@@ -162,6 +167,10 @@ public final class FixedRopeSavedData extends SavedData {
 
     RopeSpan span(UUID spanId) {
         Objects.requireNonNull(spanId, "spanId");
+        // Guide lines are intentionally invisible to structural traversal/extension callers.
+        if (isGuideLine(spanId)) {
+            return null;
+        }
         // ponytail: extension/retrieval are rare interactions; avoid another long-lived span index until lookup volume justifies it.
         for (RopeSpan span : network.spans()) {
             if (span.id().equals(spanId)) {
@@ -182,7 +191,7 @@ public final class FixedRopeSavedData extends SavedData {
         }
         RopeSpan current = span(spanId);
         if (current == null) {
-            throw new IllegalArgumentException("Unknown rope span: " + spanId);
+            throw new IllegalArgumentException("Unknown structural rope span: " + spanId);
         }
 
         network.disconnect(current.id());
