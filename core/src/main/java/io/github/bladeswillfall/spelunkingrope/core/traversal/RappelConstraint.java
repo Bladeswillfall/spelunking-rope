@@ -1,15 +1,15 @@
 package io.github.bladeswillfall.spelunkingrope.core.traversal;
 
 /**
- * Applies the one-sided distance constraint for a player hanging from a rope.
+ * Applies the distance constraints used while a player is hanging from a rope.
  *
- * <p>The caller supplies the predicted player position after gravity/input. When that position would
- * exceed the available rope length, it is projected back onto the constraint sphere and only outward
- * radial velocity is removed. Tangential velocity is preserved, which is the momentum needed for a
- * pendulum swing. Inward velocity is intentionally retained because a rope can go slack; it cannot push.</p>
+ * <p>The one-sided constraint allows slack: it only projects positions that exceed the available
+ * rope length and only removes outward radial velocity. The taut constraint projects onto the
+ * requested rope length and removes all radial velocity while preserving tangential swing momentum.</p>
  */
 public final class RappelConstraint {
     public static final int OUTPUT_STRIDE = 6;
+    private static final double DIRECTION_EPSILON_SQUARED = 1.0e-12;
 
     private RappelConstraint() {
     }
@@ -28,12 +28,7 @@ public final class RappelConstraint {
             double[] output,
             int offset
     ) {
-        if (!(maxLength > 0.0) || !Double.isFinite(maxLength)) {
-            throw new IllegalArgumentException("maxLength must be finite and positive");
-        }
-        if (offset < 0 || output.length - offset < OUTPUT_STRIDE) {
-            throw new IllegalArgumentException("output needs six values from offset");
-        }
+        validate(maxLength, output, offset);
 
         double dx = predictedX - anchorX;
         double dy = predictedY - anchorY;
@@ -64,6 +59,66 @@ public final class RappelConstraint {
 
         write(output, offset, constrainedX, constrainedY, constrainedZ, velocityX, velocityY, velocityZ);
         return true;
+    }
+
+    public static void constrainTaut(
+            double anchorX,
+            double anchorY,
+            double anchorZ,
+            double predictedX,
+            double predictedY,
+            double predictedZ,
+            double velocityX,
+            double velocityY,
+            double velocityZ,
+            double targetLength,
+            double[] output,
+            int offset
+    ) {
+        validate(targetLength, output, offset);
+
+        double dx = predictedX - anchorX;
+        double dy = predictedY - anchorY;
+        double dz = predictedZ - anchorZ;
+        double distanceSquared = dx * dx + dy * dy + dz * dz;
+        double nx;
+        double ny;
+        double nz;
+        if (distanceSquared <= DIRECTION_EPSILON_SQUARED) {
+            nx = 0.0;
+            ny = -1.0;
+            nz = 0.0;
+        } else {
+            double inverseDistance = 1.0 / Math.sqrt(distanceSquared);
+            nx = dx * inverseDistance;
+            ny = dy * inverseDistance;
+            nz = dz * inverseDistance;
+        }
+
+        double radialVelocity = velocityX * nx + velocityY * ny + velocityZ * nz;
+        velocityX -= nx * radialVelocity;
+        velocityY -= ny * radialVelocity;
+        velocityZ -= nz * radialVelocity;
+
+        write(
+                output,
+                offset,
+                anchorX + nx * targetLength,
+                anchorY + ny * targetLength,
+                anchorZ + nz * targetLength,
+                velocityX,
+                velocityY,
+                velocityZ
+        );
+    }
+
+    private static void validate(double length, double[] output, int offset) {
+        if (!(length > 0.0) || !Double.isFinite(length)) {
+            throw new IllegalArgumentException("rope length must be finite and positive");
+        }
+        if (offset < 0 || output.length - offset < OUTPUT_STRIDE) {
+            throw new IllegalArgumentException("output needs six values from offset");
+        }
     }
 
     private static void write(
