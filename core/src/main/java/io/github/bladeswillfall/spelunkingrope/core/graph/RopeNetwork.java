@@ -65,8 +65,12 @@ public final class RopeNetwork {
         if (spans.containsKey(spanId)) {
             throw new IllegalArgumentException("Duplicate rope span: " + spanId);
         }
-        requireKnownNode(startNodeId);
-        requireKnownNode(endNodeId);
+        RopeNode startNode = requireKnownNode(startNodeId);
+        RopeNode endNode = requireKnownNode(endNodeId);
+        requirePulleyCapacity(startNode);
+        if (!endNode.id().equals(startNode.id())) {
+            requirePulleyCapacity(endNode);
+        }
 
         RopeSpan span = new RopeSpan(spanId, startNodeId, endNodeId, allocatedLength);
         spans.put(span.id(), span);
@@ -170,10 +174,17 @@ public final class RopeNetwork {
         return span;
     }
 
-    private void requireKnownNode(UUID nodeId) {
-        Objects.requireNonNull(nodeId, "nodeId");
-        if (!nodes.containsKey(nodeId)) {
+    private RopeNode requireKnownNode(UUID nodeId) {
+        RopeNode node = nodes.get(Objects.requireNonNull(nodeId, "nodeId"));
+        if (node == null) {
             throw new IllegalArgumentException("Unknown rope node: " + nodeId);
+        }
+        return node;
+    }
+
+    private void requirePulleyCapacity(RopeNode node) {
+        if (node.type() == RopeNode.Type.PULLEY && incidentSpanIds.get(node.id()).size() >= 2) {
+            throw new IllegalArgumentException("A pulley node supports at most two incident spans: " + node.id());
         }
     }
 
