@@ -20,10 +20,12 @@ public final class ZiplineMotion {
         }
 
         double gravityDriven = speed - GRAVITY_PER_TICK * tangentY;
-        double inputAcceleration = 0.0;
-        if (input != 0) {
-            boolean braking = gravityDriven != 0.0 && Math.signum(gravityDriven) != Math.signum(input);
-            inputAcceleration = input * (braking ? BRAKE_ACCELERATION : INPUT_ACCELERATION);
+        double inputAcceleration = INPUT_ACCELERATION * input;
+        if (input != 0 && gravityDriven != 0.0 && Math.signum(gravityDriven) != Math.signum(input)) {
+            if (Math.abs(gravityDriven) <= BRAKE_ACCELERATION) {
+                return 0.0;
+            }
+            inputAcceleration = BRAKE_ACCELERATION * input;
         }
         double next = (gravityDriven + inputAcceleration) * DAMPING;
         next = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, next));
