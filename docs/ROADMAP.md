@@ -34,13 +34,13 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 ## M2 — Spelunking
 
 - [x] Rope coil/reel interaction
-- [ ] Piton
-- [ ] Reusable anchor
+- [x] Piton
+- [x] Reusable anchor
 - [x] Hanging rope deployment
 - [x] Climbing
 - [x] Controlled rappelling
 - [x] Rope retrieval
-- [ ] Basic custom hardware models
+- [x] Basic custom hardware models
 
 ## M3 — Route infrastructure
 

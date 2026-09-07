@@ -1,8 +1,11 @@
 package io.github.bladeswillfall.spelunkingrope.forge;
 
 import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
+import io.github.bladeswillfall.spelunkingrope.rope.PitonBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeCoilItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -12,9 +15,20 @@ import net.minecraftforge.registries.RegistryObject;
 
 @Mod(SpelunkingRope.MOD_ID)
 public final class SpelunkingRopeForge {
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(
+            ForgeRegistries.BLOCKS,
+            SpelunkingRope.MOD_ID
+    );
     private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(
             ForgeRegistries.ITEMS,
             SpelunkingRope.MOD_ID
+    );
+
+    private static final RegistryObject<PitonBlock> PITON = BLOCKS.register("piton", PitonBlock::new);
+    @SuppressWarnings("unused")
+    private static final RegistryObject<Item> PITON_ITEM = ITEMS.register(
+            "piton",
+            () -> new BlockItem(PITON.get(), new Item.Properties())
     );
     @SuppressWarnings("unused")
     private static final RegistryObject<Item> ROPE_COIL = ITEMS.register(
@@ -24,6 +38,7 @@ public final class SpelunkingRopeForge {
 
     public SpelunkingRopeForge() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         SpelunkingRope.init();
         ForgeRopeNetworking.init();
