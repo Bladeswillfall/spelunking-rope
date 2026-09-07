@@ -17,16 +17,25 @@ public final class RopeNetwork {
     }
 
     public RopeNode addNode() {
-        return addNode(UUID.randomUUID());
+        return addNode(UUID.randomUUID(), RopeNode.Type.FIXED_ANCHOR);
+    }
+
+    public RopeNode addNode(RopeNode.Type type) {
+        return addNode(UUID.randomUUID(), type);
     }
 
     public RopeNode addNode(UUID nodeId) {
+        return addNode(nodeId, RopeNode.Type.FIXED_ANCHOR);
+    }
+
+    public RopeNode addNode(UUID nodeId, RopeNode.Type type) {
         Objects.requireNonNull(nodeId, "nodeId");
+        Objects.requireNonNull(type, "type");
         if (nodes.containsKey(nodeId)) {
             throw new IllegalArgumentException("Duplicate rope node: " + nodeId);
         }
 
-        RopeNode node = new RopeNode(nodeId);
+        RopeNode node = new RopeNode(nodeId, type);
         nodes.put(node.id(), node);
         incidentSpanIds.put(node.id(), new LinkedHashSet<>());
         return node;
