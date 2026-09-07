@@ -4,6 +4,7 @@ import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
 import io.github.bladeswillfall.spelunkingrope.rope.GuideClipBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.PitonBlock;
+import io.github.bladeswillfall.spelunkingrope.rope.PulleyBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeCoilItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -28,6 +29,7 @@ public final class SpelunkingRopeForge {
 
     private static final RegistryObject<PitonBlock> PITON = BLOCKS.register("piton", PitonBlock::new);
     private static final RegistryObject<GuideClipBlock> GUIDE_CLIP = BLOCKS.register("guide_clip", GuideClipBlock::new);
+    private static final RegistryObject<PulleyBlock> PULLEY = BLOCKS.register("pulley", PulleyBlock::new);
     @SuppressWarnings("unused")
     private static final RegistryObject<Item> PITON_ITEM = ITEMS.register(
             "piton",
@@ -37,6 +39,11 @@ public final class SpelunkingRopeForge {
     private static final RegistryObject<Item> GUIDE_CLIP_ITEM = ITEMS.register(
             "guide_clip",
             () -> new BlockItem(GUIDE_CLIP.get(), new Item.Properties())
+    );
+    @SuppressWarnings("unused")
+    private static final RegistryObject<Item> PULLEY_ITEM = ITEMS.register(
+            "pulley",
+            () -> new BlockItem(PULLEY.get(), new Item.Properties())
     );
     @SuppressWarnings("unused")
     private static final RegistryObject<Item> ROPE_COIL = ITEMS.register(

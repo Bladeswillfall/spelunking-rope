@@ -19,13 +19,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class FixedRopeSavedData extends SavedData {
-    static final int SCHEMA_VERSION = 2;
+    static final int SCHEMA_VERSION = 3;
 
     private static final String DATA_NAME = "spelunking_rope";
     private static final String TAG_SCHEMA_VERSION = "schema_version";
     private static final String TAG_NODES = "nodes";
     private static final String TAG_SPANS = "spans";
     private static final String TAG_ID = "id";
+    private static final String TAG_NODE_TYPE = "type";
     private static final String TAG_START = "start";
     private static final String TAG_END = "end";
     private static final String TAG_LENGTH = "length";
@@ -54,17 +55,63 @@ public final class FixedRopeSavedData extends SavedData {
     public RopeSpan addRope(BlockAttachment start, BlockAttachment end, double allocatedLength) {
         Objects.requireNonNull(start, "start");
         Objects.requireNonNull(end, "end");
-        if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
-            throw new IllegalArgumentException("allocatedLength must be finite and positive");
-        }
+        requireAllocatedLength(allocatedLength);
 
-        RopeNode startNode = network.addNode();
-        RopeNode endNode = network.addNode();
-        attachments.put(startNode.id(), start);
-        attachments.put(endNode.id(), end);
+        RopeNode startNode = addAttachedNode(start, RopeNode.Type.FIXED_ANCHOR);
+        RopeNode endNode = addAttachedNode(end, RopeNode.Type.FIXED_ANCHOR);
         RopeSpan span = network.connect(startNode.id(), endNode.id(), allocatedLength);
         setDirty();
         return span;
+    }
+
+    RopeSpan addRouteRope(
+            BlockAttachment start,
+            RopeNode.Type startType,
+            BlockAttachment end,
+            RopeNode.Type endType,
+            double allocatedLength
+    ) {
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(startType, "startType");
+        Objects.requireNonNull(end, "end");
+        Objects.requireNonNull(endType, "endType");
+        requireAllocatedLength(allocatedLength);
+        if (start.equals(end)) {
+            return null;
+        }
+
+        // ponytail: route placement is rare; scan by attachment until mutation profiling justifies a pulley index.
+        RopeNode startNode = reusablePulleyNode(start, startType);
+        RopeNode endNode = reusablePulleyNode(end, endType);
+        if ((startNode != null && pulleyFull(startNode)) || (endNode != null && pulleyFull(endNode))) {
+            return null;
+        }
+        if (startNode != null && endNode != null && startNode.id().equals(endNode.id())) {
+            return null;
+        }
+
+        boolean createdStart = startNode == null;
+        boolean createdEnd = endNode == null;
+        if (createdStart) {
+            startNode = addAttachedNode(start, startType);
+        }
+        if (createdEnd) {
+            endNode = addAttachedNode(end, endType);
+        }
+
+        try {
+            RopeSpan span = network.connect(startNode.id(), endNode.id(), allocatedLength);
+            setDirty();
+            return span;
+        } catch (RuntimeException failure) {
+            if (createdStart) {
+                removeNodeIfOrphan(startNode.id());
+            }
+            if (createdEnd) {
+                removeNodeIfOrphan(endNode.id());
+            }
+            throw failure;
+        }
     }
 
     public RopeSpan addGuideLine(
@@ -82,8 +129,7 @@ public final class FixedRopeSavedData extends SavedData {
 
     public RopeNode addNode(BlockAttachment attachment) {
         Objects.requireNonNull(attachment, "attachment");
-        RopeNode node = network.addNode();
-        attachments.put(node.id(), attachment);
+        RopeNode node = addAttachedNode(attachment, RopeNode.Type.FIXED_ANCHOR);
         setDirty();
         return node;
     }
@@ -188,9 +234,7 @@ public final class FixedRopeSavedData extends SavedData {
 
     RopeSpan replaceSpanEnd(UUID spanId, BlockAttachment end, double allocatedLength) {
         Objects.requireNonNull(end, "end");
-        if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
-            throw new IllegalArgumentException("allocatedLength must be finite and positive");
-        }
+        requireAllocatedLength(allocatedLength);
         RopeSpan current = span(spanId);
         if (current == null) {
             throw new IllegalArgumentException("Unknown structural rope span: " + spanId);
@@ -244,6 +288,7 @@ public final class FixedRopeSavedData extends SavedData {
             BlockAttachment attachment = requireAttachment(node.id());
             CompoundTag nodeTag = new CompoundTag();
             nodeTag.putUUID(TAG_ID, node.id());
+            nodeTag.putString(TAG_NODE_TYPE, node.type().name());
             nodeTag.putInt(TAG_BLOCK_X, attachment.blockPos().getX());
             nodeTag.putInt(TAG_BLOCK_Y, attachment.blockPos().getY());
             nodeTag.putInt(TAG_BLOCK_Z, attachment.blockPos().getZ());
@@ -283,7 +328,8 @@ public final class FixedRopeSavedData extends SavedData {
         for (int i = 0; i < nodes.size(); i++) {
             CompoundTag nodeTag = nodes.getCompound(i);
             UUID nodeId = nodeTag.getUUID(TAG_ID);
-            data.network.addNode(nodeId);
+            RopeNode.Type nodeType = version >= 3 ? readNodeType(nodeTag) : RopeNode.Type.FIXED_ANCHOR;
+            data.network.addNode(nodeId, nodeType);
             data.attachments.put(nodeId, new BlockAttachment(
                     new BlockPos(
                             nodeTag.getInt(TAG_BLOCK_X),
@@ -316,6 +362,40 @@ public final class FixedRopeSavedData extends SavedData {
         return data;
     }
 
+    private RopeNode addAttachedNode(BlockAttachment attachment, RopeNode.Type type) {
+        RopeNode node = network.addNode(type);
+        attachments.put(node.id(), attachment);
+        return node;
+    }
+
+    private RopeNode reusablePulleyNode(BlockAttachment attachment, RopeNode.Type type) {
+        if (type != RopeNode.Type.PULLEY) {
+            return null;
+        }
+        for (RopeNode node : network.nodes()) {
+            if (node.type() == RopeNode.Type.PULLEY && attachment.equals(attachments.get(node.id()))) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    private boolean pulleyFull(RopeNode node) {
+        int structuralIncidents = 0;
+        for (RopeSpan span : network.spans()) {
+            if (isGuideLine(span.id())) {
+                continue;
+            }
+            if (span.startNodeId().equals(node.id()) || span.endNodeId().equals(node.id())) {
+                structuralIncidents++;
+                if (structuralIncidents >= 2) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void removeNodeIfOrphan(UUID nodeId) {
         // ponytail: retrieval is rare; a linear scan is cheaper than another persistent topology index/API.
         for (RopeSpan span : network.spans()) {
@@ -333,6 +413,23 @@ public final class FixedRopeSavedData extends SavedData {
             throw new IllegalStateException("Missing attachment for rope node " + nodeId);
         }
         return attachment;
+    }
+
+    private static RopeNode.Type readNodeType(CompoundTag nodeTag) {
+        if (!nodeTag.contains(TAG_NODE_TYPE, Tag.TAG_STRING)) {
+            return RopeNode.Type.FIXED_ANCHOR;
+        }
+        try {
+            return RopeNode.Type.valueOf(nodeTag.getString(TAG_NODE_TYPE));
+        } catch (IllegalArgumentException invalidType) {
+            throw new IllegalStateException("Unknown rope node type: " + nodeTag.getString(TAG_NODE_TYPE), invalidType);
+        }
+    }
+
+    private static void requireAllocatedLength(double allocatedLength) {
+        if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
+            throw new IllegalArgumentException("allocatedLength must be finite and positive");
+        }
     }
 
     private static void requireGuideColor(byte dyeColor) {
