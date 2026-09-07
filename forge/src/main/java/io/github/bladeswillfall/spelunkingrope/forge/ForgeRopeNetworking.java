@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class ForgeRopeNetworking {
-    private static final String PROTOCOL_VERSION = "5";
+    private static final String PROTOCOL_VERSION = "6";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(SpelunkingRope.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
