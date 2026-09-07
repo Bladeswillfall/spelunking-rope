@@ -7,7 +7,8 @@ public record RopeNode(UUID id, Type type) {
     public enum Type {
         FIXED_ANCHOR,
         PULLEY,
-        MOVABLE_ENDPOINT
+        MOVABLE_ENDPOINT,
+        WINCH
     }
 
     public RopeNode(UUID id) {
