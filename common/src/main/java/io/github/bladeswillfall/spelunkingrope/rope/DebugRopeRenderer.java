@@ -16,7 +16,13 @@ public final class DebugRopeRenderer {
     private static final int RED = 214;
     private static final int GREEN = 166;
     private static final int BLUE = 77;
+    private static final int METAL_RED = 72;
+    private static final int METAL_GREEN = 77;
+    private static final int METAL_BLUE = 83;
     private static final int ALPHA = 255;
+    private static final double TROLLEY_HALF_WIDTH = 0.14;
+    private static final double HARNESS_HEIGHT = 0.95;
+    private static final double[] TROLLEY_SAMPLE = new double[6];
 
     private DebugRopeRenderer() {
     }
@@ -48,10 +54,38 @@ public final class DebugRopeRenderer {
             drawLine(
                     consumer, matrix, normalMatrix, cameraPosition,
                     rappel.anchorX(), rappel.anchorY(), rappel.anchorZ(),
-                    playerX, playerY, playerZ
+                    playerX, playerY, playerZ,
+                    RED, GREEN, BLUE
             );
             // ponytail: the prototype has no simulated free-tail geometry. A second rigid ray from the
             // player looked like render ghosting during swings; restore the tail once it has segmented geometry.
+        } else if (rappel.traversing() && player != null
+                && clientState.sampleSpan(rappel.spanId(), rappel.currentLength(), TROLLEY_SAMPLE, 0)) {
+            double sideX = -TROLLEY_SAMPLE[5];
+            double sideZ = TROLLEY_SAMPLE[3];
+            double sideLength = Math.hypot(sideX, sideZ);
+            if (sideLength > 1.0e-6) {
+                sideX = sideX / sideLength * TROLLEY_HALF_WIDTH;
+                sideZ = sideZ / sideLength * TROLLEY_HALF_WIDTH;
+            } else {
+                sideX = TROLLEY_HALF_WIDTH;
+                sideZ = 0.0;
+            }
+
+            drawLine(
+                    consumer, matrix, normalMatrix, cameraPosition,
+                    TROLLEY_SAMPLE[0] - sideX, TROLLEY_SAMPLE[1], TROLLEY_SAMPLE[2] - sideZ,
+                    TROLLEY_SAMPLE[0] + sideX, TROLLEY_SAMPLE[1], TROLLEY_SAMPLE[2] + sideZ,
+                    METAL_RED, METAL_GREEN, METAL_BLUE
+            );
+            drawLine(
+                    consumer, matrix, normalMatrix, cameraPosition,
+                    TROLLEY_SAMPLE[0], TROLLEY_SAMPLE[1], TROLLEY_SAMPLE[2],
+                    Mth.lerp(partialTick, player.xOld, player.getX()),
+                    Mth.lerp(partialTick, player.yOld, player.getY()) + HARNESS_HEIGHT,
+                    Mth.lerp(partialTick, player.zOld, player.getZ()),
+                    METAL_RED, METAL_GREEN, METAL_BLUE
+            );
         }
 
         for (int slot = 0; slot < spanCount; slot++) {
@@ -66,7 +100,8 @@ public final class DebugRopeRenderer {
                 drawLine(
                         consumer, matrix, normalMatrix, cameraPosition,
                         geometry[start], geometry[start + 1], geometry[start + 2],
-                        geometry[end], geometry[end + 1], geometry[end + 2]
+                        geometry[end], geometry[end + 1], geometry[end + 2],
+                        RED, GREEN, BLUE
                 );
             }
         }
@@ -82,7 +117,10 @@ public final class DebugRopeRenderer {
             double z0,
             double x1,
             double y1,
-            double z1
+            double z1,
+            int red,
+            int green,
+            int blue
     ) {
         float startX = (float) (x0 - cameraPosition.x);
         float startY = (float) (y0 - cameraPosition.y);
@@ -95,11 +133,11 @@ public final class DebugRopeRenderer {
         float normalZ = endZ - startZ;
 
         consumer.vertex(matrix, startX, startY, startZ)
-                .color(RED, GREEN, BLUE, ALPHA)
+                .color(red, green, blue, ALPHA)
                 .normal(normalMatrix, normalX, normalY, normalZ)
                 .endVertex();
         consumer.vertex(matrix, endX, endY, endZ)
-                .color(RED, GREEN, BLUE, ALPHA)
+                .color(red, green, blue, ALPHA)
                 .normal(normalMatrix, normalX, normalY, normalZ)
                 .endVertex();
     }
