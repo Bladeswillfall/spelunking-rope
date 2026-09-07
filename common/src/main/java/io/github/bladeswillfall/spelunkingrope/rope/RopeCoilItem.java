@@ -179,8 +179,8 @@ public final class RopeCoilItem extends Item {
             return InteractionResult.CONSUME;
         }
 
-        BlockAttachment start = RopeAnchor.attachment(startPos, RopeAnchor.facing(startState));
-        BlockAttachment end = RopeAnchor.attachment(currentPos, RopeAnchor.facing(currentState));
+        BlockAttachment start = RopeAnchor.routeAttachment(startPos, startState);
+        BlockAttachment end = RopeAnchor.routeAttachment(currentPos, currentState);
         double worldDx = end.worldX() - start.worldX();
         double worldDy = end.worldY() - start.worldY();
         double worldDz = end.worldZ() - start.worldZ();
