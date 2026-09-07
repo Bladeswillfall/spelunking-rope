@@ -16,7 +16,6 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.DyeableLeatherItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -156,8 +155,10 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
         if (!(stack.getItem() instanceof DyeableLeatherItem dyeable) || !dyeable.hasCustomColor(stack)) {
             return FixedRopeSnapshot.NO_DYE;
         }
+        return closestDyeId(dyeable.getColor(stack));
+    }
 
-        int rgb = dyeable.getColor(stack);
+    static byte closestDyeId(int rgb) {
         DyeColor closest = DyeColor.WHITE;
         long closestDistance = Long.MAX_VALUE;
         // ponytail: only 16 vanilla dye colours and this runs on placement/name lookup, not per rope tick.
