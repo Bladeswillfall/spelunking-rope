@@ -7,6 +7,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -22,6 +23,8 @@ public final class RappelServerController {
     private static final double CORRECTION_TOLERANCE = 0.35;
     private static final double ANCHOR_EPSILON = 1.0e-6;
     private static final double FREE_END_EPSILON = 1.0e-4;
+    private static final double GRAB_RADIUS = 1.15;
+    private static final double GRAB_VERTICAL_EPSILON = 1.0e-4;
     private static final double WALL_PUSH_HORIZONTAL = 0.32;
     private static final double WALL_PUSH_VERTICAL = 0.16;
     private static final int WALL_PUSH_COOLDOWN_TICKS = 6;
@@ -52,16 +55,75 @@ public final class RappelServerController {
         if (match == null) {
             return false;
         }
+        return beginSession(player, match, anchorX, anchorY, anchorZ, false, stateSender);
+    }
 
+    public static boolean grabSpan(
+            ServerPlayer player,
+            UUID spanId,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
+        if (player.isSpectator() || !player.isAlive()) {
+            return false;
+        }
+
+        ServerLevel level = player.serverLevel();
+        FixedRopeSavedData data = FixedRopeSavedData.get(level);
+        RopeSpan span = data.span(spanId);
+        if (span == null) {
+            return false;
+        }
+        BlockAttachment start = data.attachment(span.startNodeId());
+        BlockAttachment end = data.attachment(span.endNodeId());
+        if (start == null || end == null || !isVerticalRappelSpan(start, end)) {
+            return false;
+        }
+
+        AABB ropeTube = new AABB(
+                Math.min(start.worldX(), end.worldX()),
+                Math.min(start.worldY(), end.worldY()),
+                Math.min(start.worldZ(), end.worldZ()),
+                Math.max(start.worldX(), end.worldX()),
+                Math.max(start.worldY(), end.worldY()),
+                Math.max(start.worldZ(), end.worldZ())
+        ).inflate(GRAB_RADIUS);
+        Vec3 movement = player.getDeltaMovement();
+        AABB sweptPlayer = player.getBoundingBox()
+                .expandTowards(movement)
+                .expandTowards(movement.scale(-1.0));
+        if (!ropeTube.intersects(sweptPlayer)) {
+            return false;
+        }
+
+        return beginSession(
+                player,
+                span,
+                start.worldX(),
+                start.worldY(),
+                start.worldZ(),
+                true,
+                stateSender
+        );
+    }
+
+    private static boolean beginSession(
+            ServerPlayer player,
+            RopeSpan span,
+            double anchorX,
+            double anchorY,
+            double anchorZ,
+            boolean arrestRadialVelocity,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
         double dx = player.getX() - anchorX;
         double dy = player.getY() - anchorY;
         double dz = player.getZ() - anchorZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        double maxLength = match.allocatedLength();
+        double maxLength = span.allocatedLength();
         double currentLength = Math.min(maxLength, Math.max(Math.min(MIN_LENGTH, maxLength), distance));
         Session session = new Session(
-                level,
-                match.id(),
+                player.serverLevel(),
+                span.id(),
                 anchorX,
                 anchorY,
                 anchorZ,
@@ -70,6 +132,28 @@ public final class RappelServerController {
         );
         SESSIONS.put(player.getUUID(), session);
         player.fallDistance = 0.0F;
+
+        if (arrestRadialVelocity) {
+            Vec3 velocity = player.getDeltaMovement();
+            RappelConstraint.constrainTaut(
+                    anchorX,
+                    anchorY,
+                    anchorZ,
+                    player.getX(),
+                    player.getY(),
+                    player.getZ(),
+                    velocity.x,
+                    velocity.y,
+                    velocity.z,
+                    currentLength,
+                    CONSTRAINT_OUTPUT,
+                    0
+            );
+            player.teleportTo(CONSTRAINT_OUTPUT[0], CONSTRAINT_OUTPUT[1], CONSTRAINT_OUTPUT[2]);
+            player.setDeltaMovement(CONSTRAINT_OUTPUT[3], CONSTRAINT_OUTPUT[4], CONSTRAINT_OUTPUT[5]);
+            player.hurtMarked = true;
+        }
+
         stateSender.accept(player, session.state());
         return true;
     }
@@ -162,6 +246,9 @@ public final class RappelServerController {
     ) {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null) {
+            if (input.grabSpanId() != null) {
+                grabSpan(player, input.grabSpanId(), stateSender);
+            }
             return;
         }
         if (input.detach()) {
@@ -257,6 +344,12 @@ public final class RappelServerController {
             }
         }
         return null;
+    }
+
+    private static boolean isVerticalRappelSpan(BlockAttachment start, BlockAttachment end) {
+        return Math.abs(start.worldX() - end.worldX()) <= GRAB_VERTICAL_EPSILON
+                && Math.abs(start.worldZ() - end.worldZ()) <= GRAB_VERTICAL_EPSILON
+                && end.worldY() < start.worldY() - GRAB_VERTICAL_EPSILON;
     }
 
     private static boolean spanInUse(ServerLevel level, UUID spanId) {
