@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:chain" }
+  ],
+  "result": {
+    "item": "spelunking_rope:pulley",
+    "count": 1
+  }
+}
