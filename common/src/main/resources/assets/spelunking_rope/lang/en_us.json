@@ -1,6 +1,8 @@
 {
   "item.spelunking_rope.rope_coil": "Rope Coil",
+  "item.spelunking_rope.guide_cord": "Guide Cord",
   "block.spelunking_rope.piton": "Piton",
+  "block.spelunking_rope.guide_clip": "Guide Clip",
   "key.spelunking_rope.detach": "Detach from Rope",
   "message.spelunking_rope.grab_prompt": "Hold %s to grab rope",
   "message.spelunking_rope.attached": "Rope grabbed — %s ascend • %s descend • %s release",
@@ -9,5 +11,9 @@
   "message.spelunking_rope.route_selected": "Route start selected",
   "message.spelunking_rope.route_cancelled": "Route selection cancelled",
   "message.spelunking_rope.route_too_long": "That route cannot be made with one rope coil",
-  "message.spelunking_rope.route_created": "Rope route placed"
+  "message.spelunking_rope.route_created": "Rope route placed",
+  "message.spelunking_rope.guide_selected": "Guide line start selected",
+  "message.spelunking_rope.guide_cancelled": "Guide line selection cancelled",
+  "message.spelunking_rope.guide_too_long": "That guide line cannot be made with one guide cord",
+  "message.spelunking_rope.guide_created": "Guide line placed"
 }
