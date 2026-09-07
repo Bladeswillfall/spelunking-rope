@@ -77,8 +77,8 @@ public final class RappelClientController {
         }
 
         boolean jumpDown = client.options.keyJump.isDown();
-        byte vertical = (byte) ((jumpDown ? 1 : 0)
-                - (client.options.keyShift.isDown() ? 1 : 0));
+        byte vertical = (byte) ((client.options.keyShift.isDown() ? 1 : 0)
+                - (client.options.keySprint.isDown() ? 1 : 0));
         if (vertical != lastVertical) {
             lastVertical = vertical;
             inputSender.accept(new RappelPackets.Input(vertical, false, false));
@@ -169,7 +169,15 @@ public final class RappelClientController {
     }
 
     private static void showAttachedFeedback(Minecraft client, LocalPlayer player) {
-        player.displayClientMessage(Component.translatable("message.spelunking_rope.attached"), true);
+        player.displayClientMessage(
+                Component.translatable(
+                        "message.spelunking_rope.attached",
+                        client.options.keyShift.getTranslatedKeyMessage(),
+                        client.options.keySprint.getTranslatedKeyMessage(),
+                        DETACH_KEY.getTranslatedKeyMessage()
+                ),
+                true
+        );
         if (client.level != null) {
             client.level.playLocalSound(
                     player.getX(),
