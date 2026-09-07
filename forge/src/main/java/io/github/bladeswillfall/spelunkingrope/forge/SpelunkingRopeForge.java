@@ -1,6 +1,8 @@
 package io.github.bladeswillfall.spelunkingrope.forge;
 
 import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
+import io.github.bladeswillfall.spelunkingrope.rope.GuideClipBlock;
+import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.PitonBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeCoilItem;
 import net.minecraft.world.item.BlockItem;
@@ -25,15 +27,26 @@ public final class SpelunkingRopeForge {
     );
 
     private static final RegistryObject<PitonBlock> PITON = BLOCKS.register("piton", PitonBlock::new);
+    private static final RegistryObject<GuideClipBlock> GUIDE_CLIP = BLOCKS.register("guide_clip", GuideClipBlock::new);
     @SuppressWarnings("unused")
     private static final RegistryObject<Item> PITON_ITEM = ITEMS.register(
             "piton",
             () -> new BlockItem(PITON.get(), new Item.Properties())
     );
     @SuppressWarnings("unused")
+    private static final RegistryObject<Item> GUIDE_CLIP_ITEM = ITEMS.register(
+            "guide_clip",
+            () -> new BlockItem(GUIDE_CLIP.get(), new Item.Properties())
+    );
+    @SuppressWarnings("unused")
     private static final RegistryObject<Item> ROPE_COIL = ITEMS.register(
             "rope_coil",
             () -> new RopeCoilItem(new Item.Properties().stacksTo(16), ForgeRopeNetworking::broadcastSnapshot)
+    );
+    @SuppressWarnings("unused")
+    private static final RegistryObject<Item> GUIDE_CORD = ITEMS.register(
+            "guide_cord",
+            () -> new GuideCordItem(new Item.Properties().stacksTo(16), ForgeRopeNetworking::broadcastSnapshot)
     );
 
     public SpelunkingRopeForge() {
