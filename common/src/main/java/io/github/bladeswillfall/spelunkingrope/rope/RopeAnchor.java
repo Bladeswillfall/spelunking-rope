@@ -41,7 +41,7 @@ public final class RopeAnchor {
     }
 
     public static boolean isGuideAnchor(BlockState state) {
-        return isGuideClip(state) || isPiton(state);
+        return isGuideClip(state) || (isPiton(state) && state.getValue(PitonBlock.GUIDE_CLIP));
     }
 
     public static Direction facing(BlockState state) {
@@ -76,7 +76,8 @@ public final class RopeAnchor {
         if (isGuideClip(state)) {
             return guideAttachment(anchorPos, state.getValue(PitonBlock.FACING));
         }
-        if (isPiton(state)) {
+        if (isPiton(state) && state.getValue(PitonBlock.GUIDE_CLIP)) {
+            // Preserve the existing shared-piton guide coordinate so playtest worlds keep their guide lines usable.
             return attachment(anchorPos, state.getValue(PitonBlock.FACING));
         }
         throw new IllegalArgumentException("Block state is not a guide anchor");
