@@ -25,7 +25,20 @@ public final class FixedRopeSavedData extends SavedData {
     enum WinchAdjustment {
         NO_ROPE,
         LIMIT,
+        BLOCKED,
         CHANGED
+    }
+
+    record WinchPreview(
+            WinchAdjustment adjustment,
+            UUID spanId,
+            boolean winchAtStart,
+            double oldLength,
+            double newLength
+    ) {
+        double deployedLengthDelta() {
+            return newLength - oldLength;
+        }
     }
 
     private static final String DATA_NAME = "spelunking_rope";
@@ -262,7 +275,7 @@ public final class FixedRopeSavedData extends SavedData {
         return true;
     }
 
-    WinchAdjustment adjustWinch(BlockAttachment winchAttachment, double requestedDeployedDelta) {
+    WinchPreview previewWinch(BlockAttachment winchAttachment, double requestedDeployedDelta) {
         Objects.requireNonNull(winchAttachment, "winchAttachment");
         requireFiniteAttachment(winchAttachment);
         if (!Double.isFinite(requestedDeployedDelta)) {
@@ -271,7 +284,7 @@ public final class FixedRopeSavedData extends SavedData {
 
         RopeNode winch = reusableHardwareNode(winchAttachment, RopeNode.Type.WINCH);
         if (winch == null) {
-            return WinchAdjustment.NO_ROPE;
+            return new WinchPreview(WinchAdjustment.NO_ROPE, null, false, 0.0, 0.0);
         }
 
         RopeSpan incident = null;
@@ -287,12 +300,11 @@ public final class FixedRopeSavedData extends SavedData {
             }
         }
         if (incident == null) {
-            return WinchAdjustment.NO_ROPE;
+            return new WinchPreview(WinchAdjustment.NO_ROPE, null, false, 0.0, 0.0);
         }
 
-        UUID otherNodeId = incident.startNodeId().equals(winch.id())
-                ? incident.endNodeId()
-                : incident.startNodeId();
+        boolean winchAtStart = incident.startNodeId().equals(winch.id());
+        UUID otherNodeId = winchAtStart ? incident.endNodeId() : incident.startNodeId();
         BlockAttachment other = requireAttachment(otherNodeId);
         double dx = winchAttachment.worldX() - other.worldX();
         double dy = winchAttachment.worldY() - other.worldY();
@@ -310,16 +322,37 @@ public final class FixedRopeSavedData extends SavedData {
         } else if (requestedDeployedDelta < 0.0) {
             nextLength = Math.max(straightDistance, currentLength + requestedDeployedDelta);
         } else {
-            return WinchAdjustment.LIMIT;
+            nextLength = currentLength;
         }
 
-        if (Math.abs(nextLength - currentLength) <= 1.0e-12 * Math.max(1.0, currentLength)) {
-            return WinchAdjustment.LIMIT;
+        WinchAdjustment adjustment = Math.abs(nextLength - currentLength) <= 1.0e-12 * Math.max(1.0, currentLength)
+                ? WinchAdjustment.LIMIT
+                : WinchAdjustment.CHANGED;
+        return new WinchPreview(adjustment, incident.id(), winchAtStart, currentLength, nextLength);
+    }
+
+    void applyWinch(WinchPreview preview) {
+        Objects.requireNonNull(preview, "preview");
+        if (preview.adjustment() != WinchAdjustment.CHANGED || preview.spanId() == null) {
+            throw new IllegalArgumentException("Only a changed winch preview can be applied");
         }
 
-        network.replaceSpanLength(incident.id(), nextLength);
+        RopeSpan current = span(preview.spanId());
+        double tolerance = 1.0e-12 * Math.max(1.0, preview.oldLength());
+        if (current == null || Math.abs(current.allocatedLength() - preview.oldLength()) > tolerance) {
+            throw new IllegalStateException("Winch preview is stale for span " + preview.spanId());
+        }
+
+        network.replaceSpanLength(preview.spanId(), preview.newLength());
         setDirty();
-        return WinchAdjustment.CHANGED;
+    }
+
+    WinchAdjustment adjustWinch(BlockAttachment winchAttachment, double requestedDeployedDelta) {
+        WinchPreview preview = previewWinch(winchAttachment, requestedDeployedDelta);
+        if (preview.adjustment() == WinchAdjustment.CHANGED) {
+            applyWinch(preview);
+        }
+        return preview.adjustment();
     }
 
     public boolean disconnect(UUID spanId) {
@@ -338,9 +371,9 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.disconnect(current.id());
-        removeNodeIfOrphan(current.startNodeId());
+        removeNodeIfOrphanNodes(current.startNodeId());
         if (!current.endNodeId().equals(current.startNodeId())) {
-            removeNodeIfOrphan(current.endNodeId());
+            removeNodeIfOrphanNodes(current.endNodeId());
         }
         setDirty();
         return true;
@@ -364,8 +397,8 @@ public final class FixedRopeSavedData extends SavedData {
         for (RopeSpan match : matches) {
             recoveredColors.add(guideColors.remove(match.id()));
             network.disconnect(match.id());
-            removeNodeIfOrphan(match.startNodeId());
-            removeNodeIfOrphan(match.endNodeId());
+            removeNodeIfOrphanNodes(match.startNodeId());
+            removeNodeIfOrphanNodes(match.endNodeId());
         }
         if (!matches.isEmpty()) {
             setDirty();
@@ -571,7 +604,7 @@ public final class FixedRopeSavedData extends SavedData {
         return null;
     }
 
-    private void removeNodeIfOrphan(UUID nodeId) {
+    private void removeNodeIfOrphanNodes(UUID nodeId) {
         // ponytail: retrieval is rare; a linear scan is cheaper than another persistent topology index/API.
         for (RopeSpan span : network.spans()) {
             if (span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) {
