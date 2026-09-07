@@ -191,8 +191,13 @@ public final class RopeCoilItem extends Item {
             return InteractionResult.CONSUME;
         }
 
-        RopeSpanResult result = addRouteSpan(level, start, startState, end, currentState, allocatedLength);
-        if (!result.created()) {
+        if (FixedRopeSavedData.get(level).addRouteRope(
+                start,
+                routeNodeType(startState),
+                end,
+                routeNodeType(currentState),
+                allocatedLength
+        ) == null) {
             routeMessage(player, "message.spelunking_rope.pulley_full");
             return InteractionResult.CONSUME;
         }
@@ -204,23 +209,6 @@ public final class RopeCoilItem extends Item {
         snapshotBroadcaster.accept(level);
         routeMessage(player, "message.spelunking_rope.route_created");
         return InteractionResult.CONSUME;
-    }
-
-    private static RopeSpanResult addRouteSpan(
-            ServerLevel level,
-            BlockAttachment start,
-            BlockState startState,
-            BlockAttachment end,
-            BlockState endState,
-            double allocatedLength
-    ) {
-        return new RopeSpanResult(FixedRopeSavedData.get(level).addRouteRope(
-                start,
-                routeNodeType(startState),
-                end,
-                routeNodeType(endState),
-                allocatedLength
-        ) != null);
     }
 
     private static RopeNode.Type routeNodeType(BlockState state) {
@@ -279,9 +267,6 @@ public final class RopeCoilItem extends Item {
     }
 
     private record RouteSelection(String dimension, long pos) {
-    }
-
-    private record RopeSpanResult(boolean created) {
     }
 
     static final class RouteLength {
