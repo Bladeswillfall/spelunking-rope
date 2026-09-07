@@ -18,12 +18,10 @@ class RopeCoilItemTest {
 
     @Test
     void countsRecoveredCoilsFromVerticalBlockDrop() {
-        BlockAttachment start = BlockAttachment.atWorld(0.5, 64.5, 0.5);
-
-        assertEquals(1, RopeCoilItem.coilsForVerticalDrop(start, BlockAttachment.atWorld(0.5, 64.05, 0.5)));
-        assertEquals(1, RopeCoilItem.coilsForVerticalDrop(start, BlockAttachment.atWorld(0.5, 32.05, 0.5)));
-        assertEquals(2, RopeCoilItem.coilsForVerticalDrop(start, BlockAttachment.atWorld(0.5, 31.05, 0.5)));
-        assertEquals(2, RopeCoilItem.coilsForVerticalDrop(start, BlockAttachment.atWorld(0.5, 0.05, 0.5)));
-        assertEquals(3, RopeCoilItem.coilsForVerticalDrop(start, BlockAttachment.atWorld(0.5, -0.95, 0.5)));
+        assertEquals(1, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 64));
+        assertEquals(1, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 32));
+        assertEquals(2, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 31));
+        assertEquals(2, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, 0));
+        assertEquals(3, RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(64, -1));
     }
 }
