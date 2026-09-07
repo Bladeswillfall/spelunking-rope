@@ -42,6 +42,10 @@ class PulleyTopologySavedDataTest {
         assertTrue(incident(second, pulleyNode.id()));
         assertEquals(3, data.nodes().size());
         assertEquals(2, data.spans().size());
+        assertEquals(second.id(), RappelServerController.pulleyContinuation(data, first, pulleyNode.id()).id());
+        assertEquals(first.id(), RappelServerController.pulleyContinuation(data, second, pulleyNode.id()).id());
+        UUID fixedEndpoint = first.startNodeId().equals(pulleyNode.id()) ? first.endNodeId() : first.startNodeId();
+        assertNull(RappelServerController.pulleyContinuation(data, first, fixedEndpoint));
 
         assertNull(data.addRouteRope(
                 pulley, RopeNode.Type.PULLEY,

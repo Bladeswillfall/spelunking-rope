@@ -60,9 +60,8 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
         Level level = context.getLevel();
         BlockPos currentPos = context.getClickedPos();
         BlockState currentState = level.getBlockState(currentPos);
-        Direction currentFacing = RopeAnchor.guideFacing(currentState);
         Player player = context.getPlayer();
-        if (currentFacing == null || player == null) {
+        if (!RopeAnchor.isGuideAnchor(currentState) || player == null) {
             return InteractionResult.PASS;
         }
         if (level.isClientSide) {
@@ -72,6 +71,18 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
         ServerLevel serverLevel = (ServerLevel) level;
         ServerPlayer serverPlayer = (ServerPlayer) player;
         ItemStack stack = context.getItemInHand();
+        BlockAttachment currentAttachment = RopeAnchor.guideAttachment(currentPos, currentState);
+        FixedRopeSavedData data = FixedRopeSavedData.get(serverLevel);
+        if (player.isShiftKeyDown()) {
+            List<Byte> recoveredColors = data.removeGuideLinesAt(currentAttachment);
+            if (!recoveredColors.isEmpty()) {
+                giveRecoveredCord(serverPlayer, recoveredColors);
+                snapshotBroadcaster.accept(serverLevel);
+                message(serverPlayer, "message.spelunking_rope.guide_recovered");
+                return InteractionResult.CONSUME;
+            }
+        }
+
         String dimension = serverLevel.dimension().location().toString();
         Selection selection = readSelection(stack);
         if (selection == null || !selection.dimension().equals(dimension)) {
@@ -104,15 +115,14 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
         }
 
         BlockState startState = serverLevel.getBlockState(startPos);
-        Direction startFacing = RopeAnchor.guideFacing(startState);
-        if (startFacing == null) {
+        if (!RopeAnchor.isGuideAnchor(startState)) {
             select(stack, dimension, currentPos);
             message(serverPlayer, "message.spelunking_rope.guide_selected");
             return InteractionResult.CONSUME;
         }
 
-        BlockAttachment start = RopeAnchor.guideAttachment(startPos, startFacing);
-        BlockAttachment end = RopeAnchor.guideAttachment(currentPos, currentFacing);
+        BlockAttachment start = RopeAnchor.guideAttachment(startPos, startState);
+        BlockAttachment end = currentAttachment;
         double worldDx = end.worldX() - start.worldX();
         double worldDy = end.worldY() - start.worldY();
         double worldDz = end.worldZ() - start.worldZ();
@@ -123,7 +133,7 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
             return InteractionResult.CONSUME;
         }
 
-        FixedRopeSavedData.get(serverLevel).addGuideLine(
+        data.addGuideLine(
                 start,
                 end,
                 allocatedLength,

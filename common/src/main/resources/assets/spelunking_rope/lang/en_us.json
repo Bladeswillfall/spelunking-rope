@@ -24,5 +24,6 @@
   "message.spelunking_rope.guide_selected": "Guide line start selected",
   "message.spelunking_rope.guide_cancelled": "Guide line selection cancelled",
   "message.spelunking_rope.guide_too_long": "That guide line cannot be made with one guide cord",
-  "message.spelunking_rope.guide_created": "Guide line placed"
+  "message.spelunking_rope.guide_created": "Guide line placed",
+  "message.spelunking_rope.guide_recovered": "Guide line recovered"
 }
