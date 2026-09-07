@@ -3,6 +3,7 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -15,6 +16,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class WinchBlock extends PitonBlock {
@@ -25,9 +27,14 @@ public final class WinchBlock extends PitonBlock {
     private static final VoxelShape EAST_SHAPE = Block.box(0.0, 3.0, 3.0, 9.0, 13.0, 15.0);
 
     private final Consumer<ServerLevel> snapshotBroadcaster;
+    private final BiConsumer<ServerPlayer, RappelPackets.State> stateSender;
 
-    public WinchBlock(Consumer<ServerLevel> snapshotBroadcaster) {
+    public WinchBlock(
+            Consumer<ServerLevel> snapshotBroadcaster,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
         this.snapshotBroadcaster = Objects.requireNonNull(snapshotBroadcaster, "snapshotBroadcaster");
+        this.stateSender = Objects.requireNonNull(stateSender, "stateSender");
     }
 
     @Override
@@ -56,9 +63,11 @@ public final class WinchBlock extends PitonBlock {
 
         ServerLevel serverLevel = (ServerLevel) level;
         double deployedDelta = player.isShiftKeyDown() ? STEP : -STEP;
-        FixedRopeSavedData.WinchAdjustment result = FixedRopeSavedData.get(serverLevel).adjustWinch(
+        FixedRopeSavedData.WinchAdjustment result = RappelServerController.adjustWinch(
+                serverLevel,
                 RopeAnchor.routeAttachment(pos, state),
-                deployedDelta
+                deployedDelta,
+                stateSender
         );
 
         if (result == FixedRopeSavedData.WinchAdjustment.CHANGED) {
@@ -68,6 +77,8 @@ public final class WinchBlock extends PitonBlock {
                     : "message.spelunking_rope.winch_reeled_in");
         } else if (result == FixedRopeSavedData.WinchAdjustment.NO_ROPE) {
             message(player, "message.spelunking_rope.winch_no_rope");
+        } else if (result == FixedRopeSavedData.WinchAdjustment.BLOCKED) {
+            message(player, "message.spelunking_rope.winch_blocked");
         } else {
             message(player, "message.spelunking_rope.winch_limit");
         }
