@@ -371,9 +371,9 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.disconnect(current.id());
-        removeNodeIfOrphanNodes(current.startNodeId());
+        removeNodeIfOrphan(current.startNodeId());
         if (!current.endNodeId().equals(current.startNodeId())) {
-            removeNodeIfOrphanNodes(current.endNodeId());
+            removeNodeIfOrphan(current.endNodeId());
         }
         setDirty();
         return true;
@@ -397,8 +397,8 @@ public final class FixedRopeSavedData extends SavedData {
         for (RopeSpan match : matches) {
             recoveredColors.add(guideColors.remove(match.id()));
             network.disconnect(match.id());
-            removeNodeIfOrphanNodes(match.startNodeId());
-            removeNodeIfOrphanNodes(match.endNodeId());
+            removeNodeIfOrphan(match.startNodeId());
+            removeNodeIfOrphan(match.endNodeId());
         }
         if (!matches.isEmpty()) {
             setDirty();
@@ -604,7 +604,7 @@ public final class FixedRopeSavedData extends SavedData {
         return null;
     }
 
-    private void removeNodeIfOrphanNodes(UUID nodeId) {
+    private void removeNodeIfOrphan(UUID nodeId) {
         // ponytail: retrieval is rare; a linear scan is cheaper than another persistent topology index/API.
         for (RopeSpan span : network.spans()) {
             if (span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) {
