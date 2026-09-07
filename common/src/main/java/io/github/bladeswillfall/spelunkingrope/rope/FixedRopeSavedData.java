@@ -136,7 +136,7 @@ public final class FixedRopeSavedData extends SavedData {
         return true;
     }
 
-    int removeGuideLinesAt(BlockAttachment attachment) {
+    List<Byte> removeGuideLinesAt(BlockAttachment attachment) {
         Objects.requireNonNull(attachment, "attachment");
         List<RopeSpan> matches = new ArrayList<>();
         for (RopeSpan span : network.spans()) {
@@ -149,16 +149,18 @@ public final class FixedRopeSavedData extends SavedData {
                 matches.add(span);
             }
         }
+
+        List<Byte> recoveredColors = new ArrayList<>(matches.size());
         for (RopeSpan match : matches) {
+            recoveredColors.add(guideColors.remove(match.id()));
             network.disconnect(match.id());
-            guideColors.remove(match.id());
             removeNodeIfOrphan(match.startNodeId());
             removeNodeIfOrphan(match.endNodeId());
         }
         if (!matches.isEmpty()) {
             setDirty();
         }
-        return matches.size();
+        return List.copyOf(recoveredColors);
     }
 
     public BlockAttachment attachment(UUID nodeId) {
