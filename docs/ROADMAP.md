@@ -48,7 +48,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [ ] Guide cord / guide clips
 - [ ] Colourable guide lines
 - [x] Horizontal traversal
-- [ ] Gravity-driven zipline traversal
+- [x] Gravity-driven zipline traversal
 - [ ] Carabiner/trolley visual language
 
 ## M4 — Rope engineering
