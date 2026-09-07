@@ -89,6 +89,18 @@ public final class RopeNetwork {
         return true;
     }
 
+    public RopeSpan replaceSpanLength(UUID spanId, double allocatedLength) {
+        RopeSpan current = requireKnownSpan(spanId);
+        RopeSpan replacement = new RopeSpan(
+                current.id(),
+                current.startNodeId(),
+                current.endNodeId(),
+                allocatedLength
+        );
+        spans.put(replacement.id(), replacement);
+        return replacement;
+    }
+
     public SplitResult splitSpan(UUID spanId, UUID insertedNodeId, double startLength) {
         RopeSpan original = requireKnownSpan(spanId);
         Objects.requireNonNull(insertedNodeId, "insertedNodeId");
