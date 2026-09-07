@@ -71,6 +71,9 @@ public final class DebugRopeRenderer {
                 sideX = TROLLEY_HALF_WIDTH;
                 sideZ = 0.0;
             }
+            double playerX = Mth.lerp(partialTick, player.xOld, player.getX());
+            double playerY = Mth.lerp(partialTick, player.yOld, player.getY());
+            double playerZ = Mth.lerp(partialTick, player.zOld, player.getZ());
 
             drawLine(
                     consumer, matrix, normalMatrix, cameraPosition,
@@ -81,9 +84,7 @@ public final class DebugRopeRenderer {
             drawLine(
                     consumer, matrix, normalMatrix, cameraPosition,
                     TROLLEY_SAMPLE[0], TROLLEY_SAMPLE[1], TROLLEY_SAMPLE[2],
-                    Mth.lerp(partialTick, player.xOld, player.getX()),
-                    Mth.lerp(partialTick, player.yOld, player.getY()) + HARNESS_HEIGHT,
-                    Mth.lerp(partialTick, player.zOld, player.getZ()),
+                    playerX, playerY + HARNESS_HEIGHT, playerZ,
                     METAL_RED, METAL_GREEN, METAL_BLUE
             );
         }
