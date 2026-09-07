@@ -219,10 +219,6 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         BlockAttachment currentAttachment = requireAttachment(nodeId);
-        if (currentAttachment.equals(nextAttachment)) {
-            return false;
-        }
-
         RopeSpan incident = null;
         for (RopeSpan candidate : network.spans()) {
             if (isGuideLine(candidate.id())) {
@@ -237,6 +233,9 @@ public final class FixedRopeSavedData extends SavedData {
         }
         if (incident == null) {
             throw new IllegalArgumentException("Movable endpoint must have one structural span: " + nodeId);
+        }
+        if (currentAttachment.equals(nextAttachment)) {
+            return false;
         }
 
         UUID otherNodeId = incident.startNodeId().equals(nodeId)
