@@ -100,12 +100,11 @@ public final class RopeCoilItem extends Item {
         }
 
         ServerLevel serverLevel = (ServerLevel) level;
-        BlockPos column = anchorPos.relative(facing);
         int endBlockY = DropScan.findDropEndBlockY(
                 anchorPos.getY(),
                 serverLevel.getMinBuildHeight(),
                 y -> {
-                    BlockPos pos = new BlockPos(column.getX(), y, column.getZ());
+                    BlockPos pos = new BlockPos(anchorPos.getX(), y, anchorPos.getZ());
                     return !serverLevel.getBlockState(pos).getCollisionShape(serverLevel, pos).isEmpty();
                 }
         );

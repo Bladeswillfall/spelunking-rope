@@ -10,6 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -54,12 +55,15 @@ public final class RappelServerController {
         }
 
         ServerLevel level = player.serverLevel();
-        BlockPos column = hookPos.relative(facing);
-        double anchorX = column.getX() + 0.5;
-        double anchorY = hookPos.getY() + 0.5;
-        double anchorZ = column.getZ() + 0.5;
+        BlockState hookState = level.getBlockState(hookPos);
+        if (RopeAnchor.facing(hookState) != facing) {
+            return false;
+        }
+        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookState)
+                ? RopeAnchor.routeAttachment(hookPos, hookState)
+                : RopeAnchor.attachment(hookPos, facing);
         FixedRopeSavedData data = FixedRopeSavedData.get(level);
-        RopeSpan match = findHookSpan(data, anchorX, anchorY, anchorZ);
+        RopeSpan match = findHookSpan(data, anchor.worldX(), anchor.worldY(), anchor.worldZ());
         if (match == null) {
             return false;
         }
@@ -71,7 +75,15 @@ public final class RappelServerController {
         if (!isVerticalRappelSpan(start, end)) {
             return grabSpan(player, match.id(), stateSender);
         }
-        return beginRappelSession(player, match, anchorX, anchorY, anchorZ, false, stateSender);
+        return beginRappelSession(
+                player,
+                match,
+                anchor.worldX(),
+                anchor.worldY(),
+                anchor.worldZ(),
+                false,
+                stateSender
+        );
     }
 
     public static boolean grabSpan(
@@ -240,12 +252,15 @@ public final class RappelServerController {
         }
 
         ServerLevel level = player.serverLevel();
-        BlockPos column = hookPos.relative(facing);
-        double anchorX = column.getX() + 0.5;
-        double anchorY = hookPos.getY() + 0.5;
-        double anchorZ = column.getZ() + 0.5;
+        BlockState hookState = level.getBlockState(hookPos);
+        if (RopeAnchor.facing(hookState) != facing) {
+            return false;
+        }
+        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookState)
+                ? RopeAnchor.routeAttachment(hookPos, hookState)
+                : RopeAnchor.attachment(hookPos, facing);
         FixedRopeSavedData data = FixedRopeSavedData.get(level);
-        RopeSpan match = findHookSpan(data, anchorX, anchorY, anchorZ);
+        RopeSpan match = findHookSpan(data, anchor.worldX(), anchor.worldY(), anchor.worldZ());
         if (match == null || spanInUse(level, match.id())) {
             return false;
         }

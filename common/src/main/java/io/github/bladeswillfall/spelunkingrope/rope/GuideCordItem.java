@@ -111,8 +111,8 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
             return InteractionResult.CONSUME;
         }
 
-        BlockAttachment start = RopeAnchor.attachment(startPos, startFacing);
-        BlockAttachment end = RopeAnchor.attachment(currentPos, currentFacing);
+        BlockAttachment start = RopeAnchor.guideAttachment(startPos, startFacing);
+        BlockAttachment end = RopeAnchor.guideAttachment(currentPos, currentFacing);
         double worldDx = end.worldX() - start.worldX();
         double worldDy = end.worldY() - start.worldY();
         double worldDz = end.worldZ() - start.worldZ();
@@ -143,7 +143,7 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
             return false;
         }
         FixedRopeSavedData data = FixedRopeSavedData.get(player.serverLevel());
-        List<Byte> recoveredColors = data.removeGuideLinesAt(RopeAnchor.attachment(clipPos, facing));
+        List<Byte> recoveredColors = data.removeGuideLinesAt(RopeAnchor.guideAttachment(clipPos, facing));
         if (recoveredColors.isEmpty()) {
             return false;
         }
