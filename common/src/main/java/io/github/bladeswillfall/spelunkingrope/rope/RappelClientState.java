@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public final class RappelClientState {
     public static final RappelClientState INSTANCE = new RappelClientState();
+    private static final double FREE_END_EPSILON = 1.0e-4;
 
     private boolean active;
     private UUID spanId;
@@ -66,6 +67,19 @@ public final class RappelClientState {
 
     public double maxLength() {
         return maxLength;
+    }
+
+    public boolean atFreeEnd() {
+        return active && currentLength >= maxLength - FREE_END_EPSILON;
+    }
+
+    public void updateMaxLength(UUID updatedSpanId, double updatedMaxLength) {
+        if (active
+                && spanId.equals(updatedSpanId)
+                && Double.isFinite(updatedMaxLength)
+                && updatedMaxLength >= currentLength) {
+            maxLength = updatedMaxLength;
+        }
     }
 
     public void advanceLength(byte vertical) {

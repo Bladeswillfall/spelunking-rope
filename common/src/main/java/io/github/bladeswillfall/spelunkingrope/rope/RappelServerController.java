@@ -21,6 +21,7 @@ public final class RappelServerController {
     private static final double DESCEND_PER_TICK = 0.18;
     private static final double CORRECTION_TOLERANCE = 0.35;
     private static final double ANCHOR_EPSILON = 1.0e-6;
+    private static final double FREE_END_EPSILON = 1.0e-4;
     private static final double WALL_PUSH_HORIZONTAL = 0.32;
     private static final double WALL_PUSH_VERTICAL = 0.16;
     private static final int WALL_PUSH_COOLDOWN_TICKS = 6;
@@ -81,6 +82,55 @@ public final class RappelServerController {
         SESSIONS.put(player.getUUID(), session);
         player.fallDistance = 0.0F;
         stateSender.accept(player, session.state());
+        return true;
+    }
+
+    public static boolean extendActiveRope(ServerPlayer player) {
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null
+                || player.serverLevel() != session.level
+                || session.currentLength < session.maxLength - FREE_END_EPSILON) {
+            return false;
+        }
+
+        FixedRopeSavedData data = FixedRopeSavedData.get(session.level);
+        RopeSpan span = data.span(session.spanId);
+        if (span == null) {
+            return false;
+        }
+        BlockAttachment end = data.attachment(span.endNodeId());
+        if (end == null) {
+            return false;
+        }
+
+        int x = end.blockPos().getX();
+        int z = end.blockPos().getZ();
+        int endBlockY = RopeCoilItem.DropScan.findDropEndBlockY(
+                end.blockPos().getY(),
+                session.level.getMinBuildHeight(),
+                y -> {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    return !session.level.getBlockState(pos).getCollisionShape(session.level, pos).isEmpty();
+                }
+        );
+        double newEndY = endBlockY + end.localY();
+        double extension = end.worldY() - newEndY;
+        if (extension <= ANCHOR_EPSILON) {
+            return false;
+        }
+
+        double newLength = span.allocatedLength() + extension;
+        data.replaceSpanEnd(
+                span.id(),
+                BlockAttachment.atWorld(end.worldX(), newEndY, end.worldZ()),
+                newLength
+        );
+        // Extension is rare. Update every active user of this one span rather than maintaining another index.
+        for (Session active : SESSIONS.values()) {
+            if (active.level == session.level && active.spanId.equals(span.id())) {
+                active.maxLength = newLength;
+            }
+        }
         return true;
     }
 
@@ -199,7 +249,7 @@ public final class RappelServerController {
         private final double anchorX;
         private final double anchorY;
         private final double anchorZ;
-        private final double maxLength;
+        private double maxLength;
         private double currentLength;
         private byte vertical;
         private int pushCooldownTicks;

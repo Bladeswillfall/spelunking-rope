@@ -48,6 +48,29 @@ class FixedRopeSavedDataTest {
     }
 
     @Test
+    void replacesSpanEndWithoutChangingIdentity() {
+        FixedRopeSavedData data = new FixedRopeSavedData();
+        BlockAttachment start = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        BlockAttachment end = BlockAttachment.atWorld(0.5, 32.05, 0.5);
+        RopeSpan original = data.addRope(start, end, 32.45);
+        BlockAttachment extendedEnd = BlockAttachment.atWorld(0.5, 0.05, 0.5);
+
+        RopeSpan replacement = data.replaceSpanEnd(original.id(), extendedEnd, 64.45);
+
+        assertEquals(original.id(), replacement.id());
+        assertEquals(original.startNodeId(), replacement.startNodeId());
+        assertEquals(original.endNodeId(), replacement.endNodeId());
+        assertEquals(extendedEnd, data.attachment(original.endNodeId()));
+        assertEquals(64.45, replacement.allocatedLength());
+
+        FixedRopeSavedData loaded = FixedRopeSavedData.load(data.save(new CompoundTag()));
+        RopeSpan persisted = loaded.spans().get(0);
+        assertEquals(original.id(), persisted.id());
+        assertEquals(64.45, persisted.allocatedLength());
+        assertEquals(extendedEnd, loaded.attachment(original.endNodeId()));
+    }
+
+    @Test
     void readsAndFailedMutationsDoNotDirtyFreshData() {
         FixedRopeSavedData data = new FixedRopeSavedData();
         UUID unknown = UUID.randomUUID();

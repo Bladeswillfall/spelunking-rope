@@ -3,9 +3,15 @@ package io.github.bladeswillfall.spelunkingrope.rope;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.TripWireHookBlock;
 
@@ -14,13 +20,31 @@ import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 
 public final class RopeCoilItem extends Item {
-    private static final int MAX_DEPLOY_BLOCKS = 32;
+    static final int MAX_DEPLOY_BLOCKS = 32;
 
     private final Consumer<ServerLevel> snapshotBroadcaster;
 
     public RopeCoilItem(Properties properties, Consumer<ServerLevel> snapshotBroadcaster) {
         super(properties);
         this.snapshotBroadcaster = Objects.requireNonNull(snapshotBroadcaster, "snapshotBroadcaster");
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (level.isClientSide) {
+            return RappelClientState.INSTANCE.atFreeEnd()
+                    ? InteractionResultHolder.success(stack)
+                    : InteractionResultHolder.pass(stack);
+        }
+        if (!(player instanceof ServerPlayer serverPlayer) || !RappelServerController.extendActiveRope(serverPlayer)) {
+            return InteractionResultHolder.pass(stack);
+        }
+        if (!player.getAbilities().instabuild) {
+            stack.shrink(1);
+        }
+        snapshotBroadcaster.accept((ServerLevel) level);
+        return InteractionResultHolder.consume(stack);
     }
 
     @Override
