@@ -27,5 +27,6 @@ public final class SpelunkingRopeForge {
         ITEMS.register(modEventBus);
         SpelunkingRope.init();
         ForgeRopeNetworking.init();
+        ForgeRappelEvents.init();
     }
 }
