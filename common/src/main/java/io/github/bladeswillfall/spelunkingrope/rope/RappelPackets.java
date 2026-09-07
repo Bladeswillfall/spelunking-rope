@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class RappelPackets {
+    public static final byte MODE_RAPPEL = 1;
+    public static final byte MODE_TRAVERSE = 2;
     public static final ResourceLocation INPUT_CHANNEL = new ResourceLocation(SpelunkingRope.MOD_ID, "rappel_input");
     public static final ResourceLocation STATE_CHANNEL = new ResourceLocation(SpelunkingRope.MOD_ID, "rappel_state");
 
@@ -28,6 +30,7 @@ public final class RappelPackets {
 
     public record State(
             boolean active,
+            byte mode,
             UUID spanId,
             double anchorX,
             double anchorY,
@@ -35,19 +38,39 @@ public final class RappelPackets {
             double currentLength,
             double maxLength
     ) {
+        public State(
+                boolean active,
+                UUID spanId,
+                double anchorX,
+                double anchorY,
+                double anchorZ,
+                double currentLength,
+                double maxLength
+        ) {
+            this(active, active ? MODE_RAPPEL : 0, spanId, anchorX, anchorY, anchorZ, currentLength, maxLength);
+        }
+
         public State {
             if (active) {
                 Objects.requireNonNull(spanId, "spanId");
+                if (mode != MODE_RAPPEL && mode != MODE_TRAVERSE) {
+                    throw new IllegalArgumentException("unknown active rope mode: " + mode);
+                }
                 if (!Double.isFinite(anchorX) || !Double.isFinite(anchorY) || !Double.isFinite(anchorZ)
                         || !Double.isFinite(currentLength) || !Double.isFinite(maxLength)
-                        || currentLength <= 0.0 || maxLength <= 0.0 || currentLength > maxLength) {
-                    throw new IllegalArgumentException("active rappel state must be finite and length-bounded");
+                        || maxLength <= 0.0 || currentLength < 0.0 || currentLength > maxLength
+                        || (mode == MODE_RAPPEL && currentLength <= 0.0)) {
+                    throw new IllegalArgumentException("active rope state must be finite and length-bounded");
                 }
             }
         }
 
         public static State detached() {
-            return new State(false, null, 0.0, 0.0, 0.0, 0.0, 0.0);
+            return new State(false, (byte) 0, null, 0.0, 0.0, 0.0, 0.0, 0.0);
+        }
+
+        public static State traverse(UUID spanId, double distance, double pathLength) {
+            return new State(true, MODE_TRAVERSE, spanId, 0.0, 0.0, 0.0, distance, pathLength);
         }
     }
 
@@ -74,6 +97,7 @@ public final class RappelPackets {
         if (!state.active()) {
             return;
         }
+        buffer.writeByte(state.mode());
         buffer.writeUUID(state.spanId());
         buffer.writeDouble(state.anchorX());
         buffer.writeDouble(state.anchorY());
@@ -88,6 +112,7 @@ public final class RappelPackets {
         }
         return new State(
                 true,
+                buffer.readByte(),
                 buffer.readUUID(),
                 buffer.readDouble(),
                 buffer.readDouble(),
