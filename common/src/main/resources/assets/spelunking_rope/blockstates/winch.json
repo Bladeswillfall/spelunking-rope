@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "spelunking_rope:block/winch" },
+    "facing=east": { "model": "spelunking_rope:block/winch", "y": 90, "uvlock": true },
+    "facing=south": { "model": "spelunking_rope:block/winch", "y": 180, "uvlock": true },
+    "facing=west": { "model": "spelunking_rope:block/winch", "y": 270, "uvlock": true }
+  }
+}
