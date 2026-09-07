@@ -1,5 +1,6 @@
 package io.github.bladeswillfall.spelunkingrope.forge;
 
+import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.RappelServerController;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeAnchor;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,7 +27,18 @@ public final class ForgeRappelEvents {
             return;
         }
 
-        var facing = RopeAnchor.facing(event.getLevel().getBlockState(event.getPos()));
+        var state = event.getLevel().getBlockState(event.getPos());
+        var guideFacing = RopeAnchor.guideFacing(state);
+        if (guideFacing != null) {
+            if (player.isShiftKeyDown() && GuideCordItem.retrieveAtClip(player, event.getPos(), guideFacing)) {
+                ForgeRopeNetworking.broadcastSnapshot(player.serverLevel());
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+            }
+            return;
+        }
+
+        var facing = RopeAnchor.facing(state);
         if (facing == null) {
             return;
         }

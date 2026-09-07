@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "spelunking_rope:block/guide_clip" },
+    "facing=east": { "model": "spelunking_rope:block/guide_clip", "y": 90, "uvlock": true },
+    "facing=south": { "model": "spelunking_rope:block/guide_clip", "y": 180, "uvlock": true },
+    "facing=west": { "model": "spelunking_rope:block/guide_clip", "y": 270, "uvlock": true }
+  }
+}

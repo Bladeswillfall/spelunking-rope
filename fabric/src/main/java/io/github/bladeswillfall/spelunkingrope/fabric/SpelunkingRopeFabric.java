@@ -1,6 +1,8 @@
 package io.github.bladeswillfall.spelunkingrope.fabric;
 
 import io.github.bladeswillfall.spelunkingrope.SpelunkingRope;
+import io.github.bladeswillfall.spelunkingrope.rope.GuideClipBlock;
+import io.github.bladeswillfall.spelunkingrope.rope.GuideCordItem;
 import io.github.bladeswillfall.spelunkingrope.rope.PitonBlock;
 import io.github.bladeswillfall.spelunkingrope.rope.RopeCoilItem;
 import net.fabricmc.api.ModInitializer;
@@ -18,10 +20,20 @@ public final class SpelunkingRopeFabric implements ModInitializer {
         ResourceLocation pitonId = new ResourceLocation(SpelunkingRope.MOD_ID, "piton");
         PitonBlock piton = Registry.register(BuiltInRegistries.BLOCK, pitonId, new PitonBlock());
         Registry.register(BuiltInRegistries.ITEM, pitonId, new BlockItem(piton, new Item.Properties()));
+
+        ResourceLocation guideClipId = new ResourceLocation(SpelunkingRope.MOD_ID, "guide_clip");
+        GuideClipBlock guideClip = Registry.register(BuiltInRegistries.BLOCK, guideClipId, new GuideClipBlock());
+        Registry.register(BuiltInRegistries.ITEM, guideClipId, new BlockItem(guideClip, new Item.Properties()));
+
         Registry.register(
                 BuiltInRegistries.ITEM,
                 new ResourceLocation(SpelunkingRope.MOD_ID, "rope_coil"),
                 new RopeCoilItem(new Item.Properties().stacksTo(16), FabricRopeNetworking::broadcastSnapshot)
+        );
+        Registry.register(
+                BuiltInRegistries.ITEM,
+                new ResourceLocation(SpelunkingRope.MOD_ID, "guide_cord"),
+                new GuideCordItem(new Item.Properties().stacksTo(16), FabricRopeNetworking::broadcastSnapshot)
         );
 
         FabricRopeNetworking.init();

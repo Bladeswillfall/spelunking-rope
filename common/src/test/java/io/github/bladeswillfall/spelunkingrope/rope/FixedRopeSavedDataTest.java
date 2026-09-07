@@ -4,6 +4,7 @@ import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
@@ -45,6 +46,36 @@ class FixedRopeSavedDataTest {
         assertNull(loaded.attachment(first.id()));
         assertTrue(loaded.spans().isEmpty());
         assertTrue(loaded.isDirty());
+    }
+
+    @Test
+    void persistsGuideMetadataAndRecoversLinesAtJunction() {
+        FixedRopeSavedData data = new FixedRopeSavedData();
+        BlockAttachment junction = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        RopeSpan first = data.addGuideLine(
+                junction,
+                BlockAttachment.atWorld(8.5, 60.5, 0.5),
+                9.5,
+                FixedRopeSnapshot.NO_DYE
+        );
+        data.addGuideLine(
+                junction,
+                BlockAttachment.atWorld(-8.5, 60.5, 0.5),
+                10.5,
+                (byte) 4
+        );
+
+        FixedRopeSavedData loaded = FixedRopeSavedData.load(data.save(new CompoundTag()));
+        assertNull(loaded.span(first.id()));
+        FixedRopeSnapshot snapshot = loaded.snapshot(new ResourceLocation("minecraft", "overworld"));
+        assertEquals(2, snapshot.spans().size());
+        assertEquals(FixedRopeSnapshot.TYPE_GUIDE, snapshot.spans().get(0).lineType());
+        assertEquals(FixedRopeSnapshot.NO_DYE, snapshot.spans().get(0).dyeColor());
+        assertEquals((byte) 4, snapshot.spans().get(1).dyeColor());
+
+        assertEquals(2, loaded.removeGuideLinesAt(junction));
+        assertTrue(loaded.spans().isEmpty());
+        assertTrue(loaded.nodes().isEmpty());
     }
 
     @Test

@@ -16,6 +16,9 @@ public final class DebugRopeRenderer {
     private static final int RED = 214;
     private static final int GREEN = 166;
     private static final int BLUE = 77;
+    private static final int GUIDE_RED = 202;
+    private static final int GUIDE_GREEN = 202;
+    private static final int GUIDE_BLUE = 190;
     private static final int METAL_RED = 72;
     private static final int METAL_GREEN = 77;
     private static final int METAL_BLUE = 83;
@@ -94,6 +97,10 @@ public final class DebugRopeRenderer {
                 continue;
             }
 
+            boolean guide = clientState.lineTypeAt(slot) == FixedRopeSnapshot.TYPE_GUIDE;
+            int red = guide ? GUIDE_RED : RED;
+            int green = guide ? GUIDE_GREEN : GREEN;
+            int blue = guide ? GUIDE_BLUE : BLUE;
             int spanOffset = slot * coordinatesPerSpan;
             for (int segment = 0; segment < segments; segment++) {
                 int start = spanOffset + segment * 3;
@@ -102,7 +109,7 @@ public final class DebugRopeRenderer {
                         consumer, matrix, normalMatrix, cameraPosition,
                         geometry[start], geometry[start + 1], geometry[start + 2],
                         geometry[end], geometry[end + 1], geometry[end + 2],
-                        RED, GREEN, BLUE
+                        red, green, blue
                 );
             }
         }

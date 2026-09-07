@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public final class PitonBlock extends HorizontalDirectionalBlock {
+public class PitonBlock extends HorizontalDirectionalBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     private static final VoxelShape NORTH_SHAPE = Block.box(5.0, 5.0, 6.0, 11.0, 11.0, 16.0);

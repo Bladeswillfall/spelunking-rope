@@ -14,6 +14,8 @@ public final class ClientFixedRopeState {
 
     private ResourceLocation dimension;
     private DenseRopeRuntime runtime = new DenseRopeRuntime(ROPE_SEGMENTS, 0);
+    private byte[] lineTypes = new byte[0];
+    private byte[] dyeColors = new byte[0];
 
     private ClientFixedRopeState() {
     }
@@ -26,9 +28,20 @@ public final class ClientFixedRopeState {
         return runtime;
     }
 
+    public byte lineTypeAt(int slot) {
+        return lineTypes[slot];
+    }
+
+    public byte dyeColorAt(int slot) {
+        return dyeColors[slot];
+    }
+
     public int apply(FixedRopeSnapshot snapshot) {
         DenseRopeRuntime next = new DenseRopeRuntime(ROPE_SEGMENTS, snapshot.spans().size());
+        byte[] nextLineTypes = new byte[snapshot.spans().size()];
+        byte[] nextDyeColors = new byte[snapshot.spans().size()];
         RappelClientState rappel = RappelClientState.INSTANCE;
+        int slot = 0;
         for (FixedRopeSnapshot.Span span : snapshot.spans()) {
             BlockAttachment start = span.start();
             BlockAttachment end = span.end();
@@ -38,11 +51,16 @@ public final class ClientFixedRopeState {
                     end.worldX(), end.worldY(), end.worldZ(),
                     span.allocatedLength()
             );
+            nextLineTypes[slot] = span.lineType();
+            nextDyeColors[slot] = span.dyeColor();
+            slot++;
             rappel.updateMaxLength(span.id(), span.allocatedLength());
         }
         int recomputed = next.recomputeDirty();
         dimension = snapshot.dimension();
         runtime = next;
+        lineTypes = nextLineTypes;
+        dyeColors = nextDyeColors;
         return recomputed;
     }
 
@@ -56,6 +74,9 @@ public final class ClientFixedRopeState {
 
         // ponytail: O(span count * 16) only while prompting/grabbing; add a spatial index if profiling makes this hot.
         for (int slot = 0; slot < runtime.size(); slot++) {
+            if (lineTypes[slot] == FixedRopeSnapshot.TYPE_GUIDE) {
+                continue;
+            }
             int spanOffset = slot * coordinatesPerSpan;
             for (int segment = 0; segment < runtime.segments(); segment++) {
                 int start = spanOffset + segment * 3;
@@ -95,5 +116,7 @@ public final class ClientFixedRopeState {
     public void clear() {
         dimension = null;
         runtime = new DenseRopeRuntime(ROPE_SEGMENTS, 0);
+        lineTypes = new byte[0];
+        dyeColors = new byte[0];
     }
 }

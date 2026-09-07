@@ -43,6 +43,8 @@ class FixedRopeSnapshotCodecTest {
         assertEquals(2, recomputed);
         assertEquals(snapshot.dimension(), ClientFixedRopeState.INSTANCE.dimension());
         assertEquals(2, ClientFixedRopeState.INSTANCE.runtime().size());
+        assertEquals(FixedRopeSnapshot.TYPE_GUIDE, ClientFixedRopeState.INSTANCE.lineTypeAt(1));
+        assertEquals((byte) 4, ClientFixedRopeState.INSTANCE.dyeColorAt(1));
         assertEquals(0, ClientFixedRopeState.INSTANCE.runtime().dirtyCount());
         assertEquals(0, ClientFixedRopeState.INSTANCE.runtime().recomputeDirty());
 
@@ -71,7 +73,9 @@ class FixedRopeSnapshotCodecTest {
                                 new UUID(10L, 2L),
                                 new BlockAttachment(new BlockPos(-4, 40, 12), 0.5, 0.75, 0.5),
                                 new BlockAttachment(new BlockPos(-4, 30, 12), 0.5, 0.25, 0.5),
-                                12.0
+                                12.0,
+                                FixedRopeSnapshot.TYPE_GUIDE,
+                                (byte) 4
                         )
                 )
         );
