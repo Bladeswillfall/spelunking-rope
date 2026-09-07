@@ -22,6 +22,10 @@ class SharedRopeLengthSolverTest {
         assertEquals(14.5, toSecond.secondLength());
         assertEquals(-2.5, toSecond.transferredToFirst());
         assertEquals(20.0, toSecond.firstLength() + toSecond.secondLength());
+
+        double fractionalTotal = 8.1 + 12.2;
+        SharedRopeLengthSolver.Transfer fractional = SharedRopeLengthSolver.transfer(8.1, 12.2, 5.0, 6.0, 1.3);
+        assertEquals(fractionalTotal, fractional.firstLength() + fractional.secondLength());
     }
 
     @Test
