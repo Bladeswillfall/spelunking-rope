@@ -41,7 +41,7 @@ public final class DebugRopeRenderer {
 
         RappelClientState rappel = RappelClientState.INSTANCE;
         LocalPlayer player = minecraft.player;
-        if (rappel.active() && player != null) {
+        if (rappel.rappelling() && player != null) {
             double playerX = Mth.lerp(partialTick, player.xOld, player.getX());
             double playerY = Mth.lerp(partialTick, player.yOld, player.getY());
             double playerZ = Mth.lerp(partialTick, player.zOld, player.getZ());
@@ -55,7 +55,7 @@ public final class DebugRopeRenderer {
         }
 
         for (int slot = 0; slot < spanCount; slot++) {
-            if (rappel.active() && runtime.spanIdAt(slot).equals(rappel.spanId())) {
+            if (rappel.rappelling() && runtime.spanIdAt(slot).equals(rappel.spanId())) {
                 continue;
             }
 
