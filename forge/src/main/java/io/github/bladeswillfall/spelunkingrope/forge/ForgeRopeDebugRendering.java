@@ -25,7 +25,8 @@ public final class ForgeRopeDebugRendering {
         DebugRopeRenderer.render(
                 event.getPoseStack(),
                 source.getBuffer(RenderType.lines()),
-                event.getCamera()
+                event.getCamera(),
+                event.getPartialTick()
         );
         source.endBatch(RenderType.lines());
     }

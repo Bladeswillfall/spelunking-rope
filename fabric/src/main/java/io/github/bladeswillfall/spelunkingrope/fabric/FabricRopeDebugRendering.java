@@ -18,7 +18,8 @@ public final class FabricRopeDebugRendering {
             DebugRopeRenderer.render(
                     context.matrixStack(),
                     consumers.getBuffer(RenderType.lines()),
-                    context.camera()
+                    context.camera(),
+                    context.tickDelta()
             );
         });
     }

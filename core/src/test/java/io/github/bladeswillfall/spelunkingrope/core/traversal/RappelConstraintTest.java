@@ -50,4 +50,24 @@ class RappelConstraintTest {
         assertEquals(-1.0, output[3], EPSILON);
         assertEquals(0.0, output[4], EPSILON);
     }
+
+    @Test
+    void tautConstraintPaysRopeWithoutFreefallAndKeepsSwingVelocity() {
+        double[] output = new double[RappelConstraint.OUTPUT_STRIDE];
+
+        RappelConstraint.constrainTaut(
+                0.0, 0.0, 0.0,
+                0.0, -4.0, 0.0,
+                0.75, -0.5, 0.0,
+                5.0,
+                output, 0
+        );
+
+        assertEquals(0.0, output[0], EPSILON);
+        assertEquals(-5.0, output[1], EPSILON);
+        assertEquals(0.0, output[2], EPSILON);
+        assertEquals(0.75, output[3], EPSILON);
+        assertEquals(0.0, output[4], EPSILON);
+        assertEquals(0.0, output[5], EPSILON);
+    }
 }
