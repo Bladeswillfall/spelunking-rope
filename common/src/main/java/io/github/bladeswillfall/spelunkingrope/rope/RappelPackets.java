@@ -14,7 +14,11 @@ public final class RappelPackets {
     private RappelPackets() {
     }
 
-    public record Input(byte vertical, boolean detach, boolean push) {
+    public record Input(byte vertical, boolean detach, boolean push, UUID grabSpanId) {
+        public Input(byte vertical, boolean detach, boolean push) {
+            this(vertical, detach, push, null);
+        }
+
         public Input {
             if (vertical < -1 || vertical > 1) {
                 throw new IllegalArgumentException("vertical must be -1, 0, or 1");
@@ -51,10 +55,18 @@ public final class RappelPackets {
         buffer.writeByte(input.vertical());
         buffer.writeBoolean(input.detach());
         buffer.writeBoolean(input.push());
+        buffer.writeBoolean(input.grabSpanId() != null);
+        if (input.grabSpanId() != null) {
+            buffer.writeUUID(input.grabSpanId());
+        }
     }
 
     public static Input decodeInput(FriendlyByteBuf buffer) {
-        return new Input(buffer.readByte(), buffer.readBoolean(), buffer.readBoolean());
+        byte vertical = buffer.readByte();
+        boolean detach = buffer.readBoolean();
+        boolean push = buffer.readBoolean();
+        UUID grabSpanId = buffer.readBoolean() ? buffer.readUUID() : null;
+        return new Input(vertical, detach, push, grabSpanId);
     }
 
     public static void encodeState(State state, FriendlyByteBuf buffer) {
