@@ -53,7 +53,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 
 ## M4 — Rope engineering
 
-- [ ] Explicit pulley/sheave node
+- [x] Explicit pulley/sheave node
 - [ ] Shared total-rope-length solver
 - [ ] Movable endpoint
 - [ ] Manual winch
