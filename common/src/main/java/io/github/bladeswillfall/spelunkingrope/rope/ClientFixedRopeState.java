@@ -24,6 +24,7 @@ public final class ClientFixedRopeState {
 
     public int apply(FixedRopeSnapshot snapshot) {
         DenseRopeRuntime next = new DenseRopeRuntime(ROPE_SEGMENTS, snapshot.spans().size());
+        RappelClientState rappel = RappelClientState.INSTANCE;
         for (FixedRopeSnapshot.Span span : snapshot.spans()) {
             BlockAttachment start = span.start();
             BlockAttachment end = span.end();
@@ -33,6 +34,7 @@ public final class ClientFixedRopeState {
                     end.worldX(), end.worldY(), end.worldZ(),
                     span.allocatedLength()
             );
+            rappel.updateMaxLength(span.id(), span.allocatedLength());
         }
         int recomputed = next.recomputeDirty();
         dimension = snapshot.dimension();

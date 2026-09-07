@@ -98,6 +98,39 @@ public final class FixedRopeSavedData extends SavedData {
         return attachments.get(Objects.requireNonNull(nodeId, "nodeId"));
     }
 
+    RopeSpan span(UUID spanId) {
+        Objects.requireNonNull(spanId, "spanId");
+        // ponytail: extension is a rare interaction; avoid another long-lived span index until lookup volume justifies it.
+        for (RopeSpan span : network.spans()) {
+            if (span.id().equals(spanId)) {
+                return span;
+            }
+        }
+        return null;
+    }
+
+    RopeSpan replaceSpanEnd(UUID spanId, BlockAttachment end, double allocatedLength) {
+        Objects.requireNonNull(end, "end");
+        if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
+            throw new IllegalArgumentException("allocatedLength must be finite and positive");
+        }
+        RopeSpan current = span(spanId);
+        if (current == null) {
+            throw new IllegalArgumentException("Unknown rope span: " + spanId);
+        }
+
+        network.disconnect(current.id());
+        RopeSpan replacement = network.connect(
+                current.id(),
+                current.startNodeId(),
+                current.endNodeId(),
+                allocatedLength
+        );
+        attachments.put(current.endNodeId(), end);
+        setDirty();
+        return replacement;
+    }
+
     public List<RopeNode> nodes() {
         return network.nodes();
     }
