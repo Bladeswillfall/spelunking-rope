@@ -45,6 +45,10 @@ public final class FabricRopeNetworking {
             }
             BlockPos hookPos = hitResult.getBlockPos();
             var state = level.getBlockState(hookPos);
+            // The winch owns normal/sneak use: intercepting here turns pay-out into rope retrieval.
+            if (RopeAnchor.isWinch(state)) {
+                return InteractionResult.PASS;
+            }
             var guideFacing = RopeAnchor.guideFacing(state);
             if (guideFacing != null) {
                 if (!player.isShiftKeyDown()) {
