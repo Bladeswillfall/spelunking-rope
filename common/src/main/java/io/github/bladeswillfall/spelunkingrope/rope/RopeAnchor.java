@@ -7,13 +7,13 @@ import net.minecraft.world.level.block.TripWireHookBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 public final class RopeAnchor {
-    private static final double PULLEY_FACE_OFFSET = 0.45;
+    private static final double HARDWARE_FACE_OFFSET = 0.45;
 
     private RopeAnchor() {
     }
 
     public static boolean isPiton(BlockState state) {
-        return state.getBlock() instanceof PitonBlock && !isGuideClip(state) && !isPulley(state);
+        return state.getBlock() instanceof PitonBlock && !isGuideClip(state) && !isPulley(state) && !isWinch(state);
     }
 
     public static boolean isGuideClip(BlockState state) {
@@ -24,8 +24,12 @@ public final class RopeAnchor {
         return state.getBlock() instanceof PulleyBlock;
     }
 
+    public static boolean isWinch(BlockState state) {
+        return state.getBlock() instanceof WinchBlock;
+    }
+
     public static boolean isRouteAnchor(BlockState state) {
-        return isPiton(state) || isPulley(state);
+        return isPiton(state) || isPulley(state) || isWinch(state);
     }
 
     public static Direction facing(BlockState state) {
@@ -47,14 +51,18 @@ public final class RopeAnchor {
         if (facing == null) {
             throw new IllegalArgumentException("Block state is not a rope route anchor");
         }
-        return isPulley(state) ? pulleyAttachment(anchorPos, facing) : attachment(anchorPos, facing);
+        return isPulley(state) || isWinch(state) ? hardwareAttachment(anchorPos, facing) : attachment(anchorPos, facing);
     }
 
     static BlockAttachment pulleyAttachment(BlockPos anchorPos, Direction facing) {
+        return hardwareAttachment(anchorPos, facing);
+    }
+
+    static BlockAttachment hardwareAttachment(BlockPos anchorPos, Direction facing) {
         return BlockAttachment.atWorld(
-                anchorPos.getX() + 0.5 + facing.getStepX() * PULLEY_FACE_OFFSET,
+                anchorPos.getX() + 0.5 + facing.getStepX() * HARDWARE_FACE_OFFSET,
                 anchorPos.getY() + 0.5,
-                anchorPos.getZ() + 0.5 + facing.getStepZ() * PULLEY_FACE_OFFSET
+                anchorPos.getZ() + 0.5 + facing.getStepZ() * HARDWARE_FACE_OFFSET
         );
     }
 
