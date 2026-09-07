@@ -95,7 +95,10 @@ public final class RappelServerController {
         if (start == null || end == null) {
             return false;
         }
-        int recoveredCoils = RopeCoilItem.coilsForVerticalDrop(start, end);
+        int recoveredCoils = RopeCoilItem.DropScan.recoveredCoilsForVerticalBlockDrop(
+                start.blockPos().getY(),
+                end.blockPos().getY()
+        );
         if (!data.disconnectAndRemoveOrphanNodes(match.id())) {
             return false;
         }
