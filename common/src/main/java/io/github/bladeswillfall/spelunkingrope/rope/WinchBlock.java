@@ -46,7 +46,7 @@ public final class WinchBlock extends PitonBlock {
             snapshotBroadcaster.accept(serverLevel);
             message(player, player.isShiftKeyDown()
                     ? "message.spelunking_rope.winch_paid_out"
-                    : "message.spelunking_rope.winch_reelled_in");
+                    : "message.spelunking_rope.winch_reeled_in");
         } else if (result == FixedRopeSavedData.WinchAdjustment.NO_ROPE) {
             message(player, "message.spelunking_rope.winch_no_rope");
         } else {
