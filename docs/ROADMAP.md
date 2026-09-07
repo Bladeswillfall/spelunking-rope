@@ -47,7 +47,7 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Anchor-to-anchor rope placement
 - [ ] Guide cord / guide clips
 - [ ] Colourable guide lines
-- [ ] Horizontal traversal
+- [x] Horizontal traversal
 - [ ] Gravity-driven zipline traversal
 - [ ] Carabiner/trolley visual language
 
