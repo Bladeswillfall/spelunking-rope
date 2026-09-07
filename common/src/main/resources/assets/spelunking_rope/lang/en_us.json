@@ -3,7 +3,7 @@
   "block.spelunking_rope.piton": "Piton",
   "key.spelunking_rope.detach": "Detach from Rope",
   "message.spelunking_rope.grab_prompt": "Hold %s to grab rope",
-  "message.spelunking_rope.attached": "Rope grabbed — Space climb • Sneak descend • R release",
+  "message.spelunking_rope.attached": "Rope grabbed — %s ascend • %s descend • Space wall jump • %s release",
   "message.spelunking_rope.released": "Rope released",
   "message.spelunking_rope.route_selected": "Route start selected",
   "message.spelunking_rope.route_cancelled": "Route selection cancelled",
