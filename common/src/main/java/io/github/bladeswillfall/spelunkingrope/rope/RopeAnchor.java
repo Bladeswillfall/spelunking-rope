@@ -7,6 +7,8 @@ import net.minecraft.world.level.block.TripWireHookBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 public final class RopeAnchor {
+    private static final double PULLEY_FACE_OFFSET = 0.45;
+
     private RopeAnchor() {
     }
 
@@ -38,6 +40,22 @@ public final class RopeAnchor {
 
     public static Direction guideFacing(BlockState state) {
         return isGuideClip(state) ? state.getValue(PitonBlock.FACING) : null;
+    }
+
+    public static BlockAttachment routeAttachment(BlockPos anchorPos, BlockState state) {
+        Direction facing = facing(state);
+        if (facing == null) {
+            throw new IllegalArgumentException("Block state is not a rope route anchor");
+        }
+        return isPulley(state) ? pulleyAttachment(anchorPos, facing) : attachment(anchorPos, facing);
+    }
+
+    static BlockAttachment pulleyAttachment(BlockPos anchorPos, Direction facing) {
+        return BlockAttachment.atWorld(
+                anchorPos.getX() + 0.5 + facing.getStepX() * PULLEY_FACE_OFFSET,
+                anchorPos.getY() + 0.5,
+                anchorPos.getZ() + 0.5 + facing.getStepZ() * PULLEY_FACE_OFFSET
+        );
     }
 
     public static BlockAttachment attachment(BlockPos anchorPos, Direction facing) {
