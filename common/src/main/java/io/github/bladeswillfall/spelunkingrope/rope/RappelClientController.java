@@ -1,6 +1,7 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -8,6 +9,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
 
@@ -26,9 +28,12 @@ public final class RappelClientController {
     private static final double WALL_PUSH_VERTICAL = 0.16;
     private static final double GRAB_RADIUS = 1.15;
     private static final double PROMPT_RADIUS = 1.5;
+    private static final double TRAVERSE_DIRECTION_DEADZONE = 0.05;
     private static final int PROMPT_SCAN_INTERVAL_TICKS = 10;
     private static final int GRAB_RETRY_TICKS = 4;
     private static final double[] CONSTRAINT_OUTPUT = new double[RappelConstraint.OUTPUT_STRIDE];
+    private static final double[] TRAVERSE_CURRENT = new double[PolylineTraversal.SAMPLE_OUTPUT_STRIDE];
+    private static final double[] TRAVERSE_TARGET = new double[PolylineTraversal.SAMPLE_OUTPUT_STRIDE];
 
     private static byte lastVertical;
     private static boolean jumpWasDown;
@@ -65,7 +70,7 @@ public final class RappelClientController {
             lastVertical = 0;
             jumpWasDown = false;
             wasActive = true;
-            showAttachedFeedback(client, player);
+            showAttachedFeedback(client, player, state);
         }
 
         if (DETACH_KEY.isDown()) {
@@ -76,6 +81,20 @@ public final class RappelClientController {
             return;
         }
 
+        if (state.traversing()) {
+            tickTraverse(client, player, state, inputSender);
+            return;
+        }
+
+        tickRappel(client, player, state, inputSender);
+    }
+
+    private static void tickRappel(
+            Minecraft client,
+            LocalPlayer player,
+            RappelClientState state,
+            Consumer<RappelPackets.Input> inputSender
+    ) {
         boolean jumpDown = client.options.keyJump.isDown();
         byte vertical = (byte) ((client.options.keyShift.isDown() ? 1 : 0)
                 - (client.options.keySprint.isDown() ? 1 : 0));
@@ -130,6 +149,81 @@ public final class RappelClientController {
         }
     }
 
+    private static void tickTraverse(
+            Minecraft client,
+            LocalPlayer player,
+            RappelClientState state,
+            Consumer<RappelPackets.Input> inputSender
+    ) {
+        ClientFixedRopeState ropes = ClientFixedRopeState.INSTANCE;
+        if (!ropes.sampleSpan(state.spanId(), state.currentLength(), TRAVERSE_CURRENT, 0)) {
+            inputSender.accept(new RappelPackets.Input((byte) 0, true, false));
+            state.clear();
+            wasActive = false;
+            return;
+        }
+
+        byte movement = traversalInput(client, player, TRAVERSE_CURRENT);
+        if (movement != lastVertical) {
+            lastVertical = movement;
+            inputSender.accept(new RappelPackets.Input(movement, false, false));
+        }
+
+        double nextDistance = RappelServerController.adjustTraverseDistance(
+                state.currentLength(),
+                state.maxLength(),
+                movement
+        );
+        if (!ropes.sampleSpan(state.spanId(), nextDistance, TRAVERSE_TARGET, 0)) {
+            return;
+        }
+
+        double targetX = TRAVERSE_TARGET[0];
+        double targetY = TRAVERSE_TARGET[1] - RappelServerController.TRAVERSE_HANG_OFFSET;
+        double targetZ = TRAVERSE_TARGET[2];
+        if (client.level != null) {
+            AABB targetBox = player.getBoundingBox().move(
+                    targetX - player.getX(),
+                    targetY - player.getY(),
+                    targetZ - player.getZ()
+            );
+            if (!client.level.noCollision(player, targetBox)) {
+                targetX = TRAVERSE_CURRENT[0];
+                targetY = TRAVERSE_CURRENT[1] - RappelServerController.TRAVERSE_HANG_OFFSET;
+                targetZ = TRAVERSE_CURRENT[2];
+                nextDistance = state.currentLength();
+            }
+        }
+
+        state.setTraverseDistance(nextDistance);
+        player.setPos(targetX, targetY, targetZ);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.fallDistance = 0.0F;
+        jumpWasDown = client.options.keyJump.isDown();
+    }
+
+    private static byte traversalInput(Minecraft client, LocalPlayer player, double[] sample) {
+        int forward = (client.options.keyUp.isDown() ? 1 : 0) - (client.options.keyDown.isDown() ? 1 : 0);
+        int strafe = (client.options.keyRight.isDown() ? 1 : 0) - (client.options.keyLeft.isDown() ? 1 : 0);
+        if (forward == 0 && strafe == 0) {
+            return 0;
+        }
+
+        double yaw = Math.toRadians(player.getYRot());
+        double sin = Math.sin(yaw);
+        double cos = Math.cos(yaw);
+        double desiredX = -sin * forward + cos * strafe;
+        double desiredZ = cos * forward + sin * strafe;
+        double dot = desiredX * sample[3] + desiredZ * sample[5];
+        if (dot > TRAVERSE_DIRECTION_DEADZONE) {
+            return 1;
+        }
+        if (dot < -TRAVERSE_DIRECTION_DEADZONE) {
+            return -1;
+        }
+        return 0;
+    }
+
     private static void handleGrabInput(
             Minecraft client,
             LocalPlayer player,
@@ -168,16 +262,26 @@ public final class RappelClientController {
         }
     }
 
-    private static void showAttachedFeedback(Minecraft client, LocalPlayer player) {
-        player.displayClientMessage(
-                Component.translatable(
-                        "message.spelunking_rope.attached",
-                        client.options.keyShift.getTranslatedKeyMessage(),
-                        client.options.keySprint.getTranslatedKeyMessage(),
-                        DETACH_KEY.getTranslatedKeyMessage()
-                ),
-                true
-        );
+    private static void showAttachedFeedback(Minecraft client, LocalPlayer player, RappelClientState state) {
+        if (state.traversing()) {
+            player.displayClientMessage(
+                    Component.translatable(
+                            "message.spelunking_rope.traverse_attached",
+                            DETACH_KEY.getTranslatedKeyMessage()
+                    ),
+                    true
+            );
+        } else {
+            player.displayClientMessage(
+                    Component.translatable(
+                            "message.spelunking_rope.attached",
+                            client.options.keyShift.getTranslatedKeyMessage(),
+                            client.options.keySprint.getTranslatedKeyMessage(),
+                            DETACH_KEY.getTranslatedKeyMessage()
+                    ),
+                    true
+            );
+        }
         if (client.level != null) {
             client.level.playLocalSound(
                     player.getX(),
