@@ -1,6 +1,8 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
+import io.github.bladeswillfall.spelunkingrope.core.geometry.CatenarySampler;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
+import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import io.github.bladeswillfall.spelunkingrope.core.traversal.RappelConstraint;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,7 +22,10 @@ public final class RappelServerController {
     private static final double MIN_LENGTH = 1.25;
     private static final double CLIMB_PER_TICK = 0.12;
     private static final double DESCEND_PER_TICK = 0.18;
+    static final double TRAVERSE_HANG_OFFSET = 1.25;
+    private static final double TRAVERSE_PER_TICK = 0.14;
     private static final double CORRECTION_TOLERANCE = 0.35;
+    private static final double TRAVERSE_CORRECTION_TOLERANCE = 0.20;
     private static final double ANCHOR_EPSILON = 1.0e-6;
     private static final double FREE_END_EPSILON = 1.0e-4;
     private static final double GRAB_RADIUS = 1.15;
@@ -28,6 +33,9 @@ public final class RappelServerController {
     private static final double WALL_PUSH_HORIZONTAL = 0.32;
     private static final double WALL_PUSH_VERTICAL = 0.16;
     private static final int WALL_PUSH_COOLDOWN_TICKS = 6;
+    // ponytail: traversal follows the same fixed 16-segment prototype used by the client runtime;
+    // promote this to shared/configured rope resolution only if segment count becomes user-configurable.
+    private static final int TRAVERSE_SEGMENTS = 16;
 
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
     private static final double[] CONSTRAINT_OUTPUT = new double[RappelConstraint.OUTPUT_STRIDE];
@@ -55,7 +63,15 @@ public final class RappelServerController {
         if (match == null) {
             return false;
         }
-        return beginSession(player, match, anchorX, anchorY, anchorZ, false, stateSender);
+        BlockAttachment start = data.attachment(match.startNodeId());
+        BlockAttachment end = data.attachment(match.endNodeId());
+        if (start == null || end == null) {
+            return false;
+        }
+        if (!isVerticalRappelSpan(start, end)) {
+            return grabSpan(player, match.id(), stateSender);
+        }
+        return beginRappelSession(player, match, anchorX, anchorY, anchorZ, false, stateSender);
     }
 
     public static boolean grabSpan(
@@ -75,38 +91,34 @@ public final class RappelServerController {
         }
         BlockAttachment start = data.attachment(span.startNodeId());
         BlockAttachment end = data.attachment(span.endNodeId());
-        if (start == null || end == null || !isVerticalRappelSpan(start, end)) {
+        if (start == null || end == null) {
             return false;
         }
 
-        AABB ropeTube = new AABB(
-                Math.min(start.worldX(), end.worldX()),
-                Math.min(start.worldY(), end.worldY()),
-                Math.min(start.worldZ(), end.worldZ()),
-                Math.max(start.worldX(), end.worldX()),
-                Math.max(start.worldY(), end.worldY()),
-                Math.max(start.worldZ(), end.worldZ())
-        ).inflate(GRAB_RADIUS);
+        double[] geometry = sampleSpan(span, start, end);
         Vec3 movement = player.getDeltaMovement();
         AABB sweptPlayer = player.getBoundingBox()
                 .expandTowards(movement)
                 .expandTowards(movement.scale(-1.0));
-        if (!ropeTube.intersects(sweptPlayer)) {
+        if (!intersectsGeometry(geometry, sweptPlayer, GRAB_RADIUS)) {
             return false;
         }
 
-        return beginSession(
-                player,
-                span,
-                start.worldX(),
-                start.worldY(),
-                start.worldZ(),
-                true,
-                stateSender
-        );
+        if (isVerticalRappelSpan(start, end)) {
+            return beginRappelSession(
+                    player,
+                    span,
+                    start.worldX(),
+                    start.worldY(),
+                    start.worldZ(),
+                    true,
+                    stateSender
+            );
+        }
+        return beginTraverseSession(player, span, geometry, stateSender);
     }
 
-    private static boolean beginSession(
+    private static boolean beginRappelSession(
             ServerPlayer player,
             RopeSpan span,
             double anchorX,
@@ -124,11 +136,13 @@ public final class RappelServerController {
         Session session = new Session(
                 player.serverLevel(),
                 span.id(),
+                RappelPackets.MODE_RAPPEL,
                 anchorX,
                 anchorY,
                 anchorZ,
                 maxLength,
-                currentLength
+                currentLength,
+                null
         );
         SESSIONS.put(player.getUUID(), session);
         player.fallDistance = 0.0F;
@@ -154,6 +168,60 @@ public final class RappelServerController {
             player.hurtMarked = true;
         }
 
+        stateSender.accept(player, session.state());
+        return true;
+    }
+
+    private static boolean beginTraverseSession(
+            ServerPlayer player,
+            RopeSpan span,
+            double[] geometry,
+            BiConsumer<ServerPlayer, RappelPackets.State> stateSender
+    ) {
+        double pathLength = PolylineTraversal.length(geometry, 0, TRAVERSE_SEGMENTS + 1);
+        if (!(pathLength > 0.0)) {
+            return false;
+        }
+        double referenceY = player.getY() + player.getBbHeight() * 0.75;
+        double pathDistance = PolylineTraversal.projectDistance(
+                geometry,
+                0,
+                TRAVERSE_SEGMENTS + 1,
+                player.getX(),
+                referenceY,
+                player.getZ()
+        );
+        PolylineTraversal.sample(
+                geometry,
+                0,
+                TRAVERSE_SEGMENTS + 1,
+                pathDistance,
+                CONSTRAINT_OUTPUT,
+                0
+        );
+        double targetX = CONSTRAINT_OUTPUT[0];
+        double targetY = CONSTRAINT_OUTPUT[1] - TRAVERSE_HANG_OFFSET;
+        double targetZ = CONSTRAINT_OUTPUT[2];
+        if (!canOccupy(player, targetX, targetY, targetZ)) {
+            return false;
+        }
+
+        Session session = new Session(
+                player.serverLevel(),
+                span.id(),
+                RappelPackets.MODE_TRAVERSE,
+                0.0,
+                0.0,
+                0.0,
+                pathLength,
+                pathDistance,
+                geometry
+        );
+        SESSIONS.put(player.getUUID(), session);
+        player.teleportTo(targetX, targetY, targetZ);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.fallDistance = 0.0F;
+        player.hurtMarked = true;
         stateSender.accept(player, session.state());
         return true;
     }
@@ -193,6 +261,7 @@ public final class RappelServerController {
     public static boolean extendActiveRope(ServerPlayer player) {
         Session session = SESSIONS.get(player.getUUID());
         if (session == null
+                || session.mode != RappelPackets.MODE_RAPPEL
                 || player.serverLevel() != session.level
                 || session.currentLength < session.maxLength - FREE_END_EPSILON) {
             return false;
@@ -230,9 +299,11 @@ public final class RappelServerController {
                 BlockAttachment.atWorld(end.worldX(), newEndY, end.worldZ()),
                 newLength
         );
-        // Extension is rare. Update every active user of this one span rather than maintaining another index.
+        // Extension is rare. Update every active rappel user of this one span rather than maintaining another index.
         for (Session active : SESSIONS.values()) {
-            if (active.level == session.level && active.spanId.equals(span.id())) {
+            if (active.mode == RappelPackets.MODE_RAPPEL
+                    && active.level == session.level
+                    && active.spanId.equals(span.id())) {
                 active.maxLength = newLength;
             }
         }
@@ -259,13 +330,16 @@ public final class RappelServerController {
 
         boolean changed = session.vertical != input.vertical();
         session.vertical = input.vertical();
-        if (input.push() && player.horizontalCollision && session.pushCooldownTicks == 0) {
+        if (session.mode == RappelPackets.MODE_RAPPEL
+                && input.push()
+                && player.horizontalCollision
+                && session.pushCooldownTicks == 0) {
             applyWallPush(player);
             session.pushCooldownTicks = WALL_PUSH_COOLDOWN_TICKS;
             changed = true;
         }
         if (changed) {
-            // Re-anchor client integration to the server clock only when accepted input changes state.
+            // Re-anchor client prediction to the server clock only when accepted input changes state.
             stateSender.accept(player, session.state());
         }
     }
@@ -286,6 +360,11 @@ public final class RappelServerController {
             if (!player.isAlive() || player.isSpectator() || player.serverLevel() != session.level) {
                 iterator.remove();
                 stateSender.accept(player, RappelPackets.State.detached());
+                continue;
+            }
+
+            if (session.mode == RappelPackets.MODE_TRAVERSE) {
+                tickTraverse(player, session);
                 continue;
             }
 
@@ -331,6 +410,82 @@ public final class RappelServerController {
             return Math.min(maxLength, currentLength + DESCEND_PER_TICK);
         }
         return currentLength;
+    }
+
+    public static double adjustTraverseDistance(double currentDistance, double pathLength, byte movement) {
+        if (movement > 0) {
+            return Math.min(pathLength, currentDistance + TRAVERSE_PER_TICK);
+        }
+        if (movement < 0) {
+            return Math.max(0.0, currentDistance - TRAVERSE_PER_TICK);
+        }
+        return currentDistance;
+    }
+
+    private static void tickTraverse(ServerPlayer player, Session session) {
+        double nextDistance = adjustTraverseDistance(session.currentLength, session.maxLength, session.vertical);
+        PolylineTraversal.sample(
+                session.pathGeometry,
+                0,
+                TRAVERSE_SEGMENTS + 1,
+                nextDistance,
+                CONSTRAINT_OUTPUT,
+                0
+        );
+        double targetX = CONSTRAINT_OUTPUT[0];
+        double targetY = CONSTRAINT_OUTPUT[1] - TRAVERSE_HANG_OFFSET;
+        double targetZ = CONSTRAINT_OUTPUT[2];
+        player.fallDistance = 0.0F;
+        if (!canOccupy(player, targetX, targetY, targetZ)) {
+            return;
+        }
+        session.currentLength = nextDistance;
+
+        double dx = targetX - player.getX();
+        double dy = targetY - player.getY();
+        double dz = targetZ - player.getZ();
+        if (dx * dx + dy * dy + dz * dz <= TRAVERSE_CORRECTION_TOLERANCE * TRAVERSE_CORRECTION_TOLERANCE) {
+            return;
+        }
+        player.teleportTo(targetX, targetY, targetZ);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+    }
+
+    private static double[] sampleSpan(RopeSpan span, BlockAttachment start, BlockAttachment end) {
+        double[] geometry = new double[CatenarySampler.coordinateCount(TRAVERSE_SEGMENTS)];
+        CatenarySampler.sample(
+                start.worldX(), start.worldY(), start.worldZ(),
+                end.worldX(), end.worldY(), end.worldZ(),
+                span.allocatedLength(),
+                TRAVERSE_SEGMENTS,
+                geometry
+        );
+        return geometry;
+    }
+
+    private static boolean intersectsGeometry(double[] geometry, AABB sweptPlayer, double radius) {
+        for (int segment = 0; segment < TRAVERSE_SEGMENTS; segment++) {
+            int start = segment * 3;
+            int end = start + 3;
+            AABB tube = new AABB(
+                    Math.min(geometry[start], geometry[end]),
+                    Math.min(geometry[start + 1], geometry[end + 1]),
+                    Math.min(geometry[start + 2], geometry[end + 2]),
+                    Math.max(geometry[start], geometry[end]),
+                    Math.max(geometry[start + 1], geometry[end + 1]),
+                    Math.max(geometry[start + 2], geometry[end + 2])
+            ).inflate(radius);
+            if (tube.intersects(sweptPlayer)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean canOccupy(ServerPlayer player, double x, double y, double z) {
+        AABB target = player.getBoundingBox().move(x - player.getX(), y - player.getY(), z - player.getZ());
+        return player.serverLevel().noCollision(player, target);
     }
 
     private static RopeSpan findHookSpan(FixedRopeSavedData data, double anchorX, double anchorY, double anchorZ) {
@@ -382,9 +537,11 @@ public final class RappelServerController {
     private static final class Session {
         private final ServerLevel level;
         private final UUID spanId;
+        private final byte mode;
         private final double anchorX;
         private final double anchorY;
         private final double anchorZ;
+        private final double[] pathGeometry;
         private double maxLength;
         private double currentLength;
         private byte vertical;
@@ -393,24 +550,32 @@ public final class RappelServerController {
         private Session(
                 ServerLevel level,
                 UUID spanId,
+                byte mode,
                 double anchorX,
                 double anchorY,
                 double anchorZ,
                 double maxLength,
-                double currentLength
+                double currentLength,
+                double[] pathGeometry
         ) {
             this.level = level;
             this.spanId = spanId;
+            this.mode = mode;
             this.anchorX = anchorX;
             this.anchorY = anchorY;
             this.anchorZ = anchorZ;
             this.maxLength = maxLength;
             this.currentLength = currentLength;
+            this.pathGeometry = pathGeometry;
         }
 
         private RappelPackets.State state() {
+            if (mode == RappelPackets.MODE_TRAVERSE) {
+                return RappelPackets.State.traverse(spanId, currentLength, maxLength);
+            }
             return new RappelPackets.State(
                     true,
+                    RappelPackets.MODE_RAPPEL,
                     spanId,
                     anchorX,
                     anchorY,

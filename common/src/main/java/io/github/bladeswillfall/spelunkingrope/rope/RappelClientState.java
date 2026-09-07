@@ -7,6 +7,7 @@ public final class RappelClientState {
     private static final double FREE_END_EPSILON = 1.0e-4;
 
     private boolean active;
+    private byte mode;
     private UUID spanId;
     private double anchorX;
     private double anchorY;
@@ -23,6 +24,7 @@ public final class RappelClientState {
             return;
         }
         active = true;
+        mode = state.mode();
         spanId = state.spanId();
         anchorX = state.anchorX();
         anchorY = state.anchorY();
@@ -33,6 +35,7 @@ public final class RappelClientState {
 
     public void clear() {
         active = false;
+        mode = 0;
         spanId = null;
         anchorX = 0.0;
         anchorY = 0.0;
@@ -43,6 +46,14 @@ public final class RappelClientState {
 
     public boolean active() {
         return active;
+    }
+
+    public boolean rappelling() {
+        return active && mode == RappelPackets.MODE_RAPPEL;
+    }
+
+    public boolean traversing() {
+        return active && mode == RappelPackets.MODE_TRAVERSE;
     }
 
     public UUID spanId() {
@@ -70,11 +81,11 @@ public final class RappelClientState {
     }
 
     public boolean atFreeEnd() {
-        return active && currentLength >= maxLength - FREE_END_EPSILON;
+        return rappelling() && currentLength >= maxLength - FREE_END_EPSILON;
     }
 
     public void updateMaxLength(UUID updatedSpanId, double updatedMaxLength) {
-        if (active
+        if (rappelling()
                 && spanId.equals(updatedSpanId)
                 && Double.isFinite(updatedMaxLength)
                 && updatedMaxLength >= currentLength) {
@@ -83,8 +94,14 @@ public final class RappelClientState {
     }
 
     public void advanceLength(byte vertical) {
-        if (active) {
+        if (rappelling()) {
             currentLength = RappelServerController.adjustLength(currentLength, maxLength, vertical);
+        }
+    }
+
+    public void setTraverseDistance(double distance) {
+        if (traversing() && Double.isFinite(distance)) {
+            currentLength = Math.max(0.0, Math.min(maxLength, distance));
         }
     }
 }

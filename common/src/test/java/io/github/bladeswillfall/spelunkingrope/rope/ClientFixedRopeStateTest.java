@@ -1,5 +1,6 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
+import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.AfterEach;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClientFixedRopeStateTest {
     @AfterEach
@@ -18,7 +20,7 @@ class ClientFixedRopeStateTest {
     }
 
     @Test
-    void findsVerticalRopeAcrossSweptMotionAndIgnoresRouteSpan() {
+    void findsVerticalAndRouteRopesAcrossSweptMotion() {
         UUID vertical = UUID.randomUUID();
         UUID route = UUID.randomUUID();
         ClientFixedRopeState.INSTANCE.apply(new FixedRopeSnapshot(
@@ -47,11 +49,18 @@ class ClientFixedRopeStateTest {
                         0.3
                 )
         );
-        assertNull(ClientFixedRopeState.INSTANCE.grabCandidate(
-                new Vec3(7.5, 8.5, -1.0),
-                new Vec3(7.5, 8.5, 1.0),
-                0.3
-        ));
+
+        double[] routePoint = new double[PolylineTraversal.SAMPLE_OUTPUT_STRIDE];
+        assertTrue(ClientFixedRopeState.INSTANCE.sampleSpan(route, 4.0, routePoint, 0));
+        assertEquals(
+                route,
+                ClientFixedRopeState.INSTANCE.grabCandidate(
+                        new Vec3(routePoint[0], routePoint[1], routePoint[2] - 1.0),
+                        new Vec3(routePoint[0], routePoint[1], routePoint[2] + 1.0),
+                        0.3
+                )
+        );
+
         assertNull(ClientFixedRopeState.INSTANCE.grabCandidate(
                 new Vec3(3.0, 5.5, 3.0),
                 new Vec3(3.0, 4.5, 3.0),
