@@ -1,0 +1,93 @@
+{
+  "textures": {
+    "metal": "minecraft:block/iron_block",
+    "drum": "minecraft:block/stripped_dark_oak_log",
+    "particle": "minecraft:block/iron_block"
+  },
+  "elements": [
+    {
+      "from": [4, 4, 14],
+      "to": [12, 12, 16],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [7, 7, 9],
+      "to": [9, 9, 14],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [4, 4, 9],
+      "to": [5, 12, 12],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [11, 4, 9],
+      "to": [12, 12, 12],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [5, 5, 9],
+      "to": [11, 11, 12],
+      "faces": {
+        "north": { "texture": "#drum" },
+        "south": { "texture": "#drum" },
+        "west": { "texture": "#drum" },
+        "east": { "texture": "#drum" },
+        "up": { "texture": "#drum" },
+        "down": { "texture": "#drum" }
+      }
+    },
+    {
+      "from": [11, 7, 7],
+      "to": [12, 8, 11],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [11, 6, 6],
+      "to": [13, 9, 7],
+      "faces": {
+        "north": { "texture": "#drum" },
+        "south": { "texture": "#drum" },
+        "west": { "texture": "#drum" },
+        "east": { "texture": "#drum" },
+        "up": { "texture": "#drum" },
+        "down": { "texture": "#drum" }
+      }
+    }
+  ]
+}
