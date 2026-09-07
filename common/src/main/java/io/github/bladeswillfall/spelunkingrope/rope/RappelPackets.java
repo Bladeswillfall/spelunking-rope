@@ -36,7 +36,8 @@ public final class RappelPackets {
             double anchorY,
             double anchorZ,
             double currentLength,
-            double maxLength
+            double maxLength,
+            double traverseSpeed
     ) {
         public State(
                 boolean active,
@@ -47,7 +48,7 @@ public final class RappelPackets {
                 double currentLength,
                 double maxLength
         ) {
-            this(active, active ? MODE_RAPPEL : 0, spanId, anchorX, anchorY, anchorZ, currentLength, maxLength);
+            this(active, active ? MODE_RAPPEL : 0, spanId, anchorX, anchorY, anchorZ, currentLength, maxLength, 0.0);
         }
 
         public State {
@@ -58,6 +59,7 @@ public final class RappelPackets {
                 }
                 if (!Double.isFinite(anchorX) || !Double.isFinite(anchorY) || !Double.isFinite(anchorZ)
                         || !Double.isFinite(currentLength) || !Double.isFinite(maxLength)
+                        || !Double.isFinite(traverseSpeed)
                         || maxLength <= 0.0 || currentLength < 0.0 || currentLength > maxLength
                         || (mode == MODE_RAPPEL && currentLength <= 0.0)) {
                     throw new IllegalArgumentException("active rope state must be finite and length-bounded");
@@ -66,11 +68,11 @@ public final class RappelPackets {
         }
 
         public static State detached() {
-            return new State(false, (byte) 0, null, 0.0, 0.0, 0.0, 0.0, 0.0);
+            return new State(false, (byte) 0, null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
 
-        public static State traverse(UUID spanId, double distance, double pathLength) {
-            return new State(true, MODE_TRAVERSE, spanId, 0.0, 0.0, 0.0, distance, pathLength);
+        public static State traverse(UUID spanId, double distance, double pathLength, double speed) {
+            return new State(true, MODE_TRAVERSE, spanId, 0.0, 0.0, 0.0, distance, pathLength, speed);
         }
     }
 
@@ -104,6 +106,7 @@ public final class RappelPackets {
         buffer.writeDouble(state.anchorZ());
         buffer.writeDouble(state.currentLength());
         buffer.writeDouble(state.maxLength());
+        buffer.writeDouble(state.traverseSpeed());
     }
 
     public static State decodeState(FriendlyByteBuf buffer) {
@@ -114,6 +117,7 @@ public final class RappelPackets {
                 true,
                 buffer.readByte(),
                 buffer.readUUID(),
+                buffer.readDouble(),
                 buffer.readDouble(),
                 buffer.readDouble(),
                 buffer.readDouble(),
