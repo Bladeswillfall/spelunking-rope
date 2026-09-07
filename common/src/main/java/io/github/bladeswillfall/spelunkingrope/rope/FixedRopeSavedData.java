@@ -169,13 +169,7 @@ public final class FixedRopeSavedData extends SavedData {
         Objects.requireNonNull(pulleyNodeId, "pulleyNodeId");
         Objects.requireNonNull(firstSpanId, "firstSpanId");
 
-        RopeNode pulley = null;
-        for (RopeNode node : network.nodes()) {
-            if (node.id().equals(pulleyNodeId)) {
-                pulley = node;
-                break;
-            }
-        }
+        RopeNode pulley = findNode(pulleyNodeId);
         if (pulley == null || pulley.type() != RopeNode.Type.PULLEY) {
             throw new IllegalArgumentException("Unknown pulley node: " + pulleyNodeId);
         }
@@ -212,6 +206,54 @@ public final class FixedRopeSavedData extends SavedData {
         network.replaceSpanLength(second.id(), transfer.secondLength());
         setDirty();
         return transfer;
+    }
+
+    boolean moveEndpoint(UUID nodeId, BlockAttachment nextAttachment) {
+        Objects.requireNonNull(nodeId, "nodeId");
+        Objects.requireNonNull(nextAttachment, "nextAttachment");
+        requireFiniteAttachment(nextAttachment);
+
+        RopeNode node = findNode(nodeId);
+        if (node == null || node.type() != RopeNode.Type.MOVABLE_ENDPOINT) {
+            throw new IllegalArgumentException("Unknown movable endpoint node: " + nodeId);
+        }
+
+        BlockAttachment currentAttachment = requireAttachment(nodeId);
+        RopeSpan incident = null;
+        for (RopeSpan candidate : network.spans()) {
+            if (isGuideLine(candidate.id())) {
+                continue;
+            }
+            if (candidate.startNodeId().equals(nodeId) || candidate.endNodeId().equals(nodeId)) {
+                if (incident != null) {
+                    throw new IllegalStateException("Movable endpoint has more than one structural span: " + nodeId);
+                }
+                incident = candidate;
+            }
+        }
+        if (incident == null) {
+            throw new IllegalArgumentException("Movable endpoint must have one structural span: " + nodeId);
+        }
+        if (currentAttachment.equals(nextAttachment)) {
+            return false;
+        }
+
+        UUID otherNodeId = incident.startNodeId().equals(nodeId)
+                ? incident.endNodeId()
+                : incident.startNodeId();
+        BlockAttachment other = requireAttachment(otherNodeId);
+        double dx = nextAttachment.worldX() - other.worldX();
+        double dy = nextAttachment.worldY() - other.worldY();
+        double dz = nextAttachment.worldZ() - other.worldZ();
+        double straightDistance = Math.hypot(Math.hypot(dx, dz), dy);
+        double tolerance = 1.0e-9 * Math.max(1.0, straightDistance);
+        if (straightDistance > incident.allocatedLength() + tolerance) {
+            return false;
+        }
+
+        attachments.put(nodeId, nextAttachment);
+        setDirty();
+        return true;
     }
 
     public boolean disconnect(UUID spanId) {
@@ -452,6 +494,15 @@ public final class FixedRopeSavedData extends SavedData {
         return false;
     }
 
+    private RopeNode findNode(UUID nodeId) {
+        for (RopeNode node : network.nodes()) {
+            if (node.id().equals(nodeId)) {
+                return node;
+            }
+        }
+        return null;
+    }
+
     private void removeNodeIfOrphan(UUID nodeId) {
         // ponytail: retrieval is rare; a linear scan is cheaper than another persistent topology index/API.
         for (RopeSpan span : network.spans()) {
@@ -485,6 +536,14 @@ public final class FixedRopeSavedData extends SavedData {
     private static void requireAllocatedLength(double allocatedLength) {
         if (!Double.isFinite(allocatedLength) || allocatedLength <= 0.0) {
             throw new IllegalArgumentException("allocatedLength must be finite and positive");
+        }
+    }
+
+    private static void requireFiniteAttachment(BlockAttachment attachment) {
+        if (!Double.isFinite(attachment.localX())
+                || !Double.isFinite(attachment.localY())
+                || !Double.isFinite(attachment.localZ())) {
+            throw new IllegalArgumentException("attachment offsets must be finite");
         }
     }
 

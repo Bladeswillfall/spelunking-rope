@@ -6,7 +6,8 @@ import java.util.UUID;
 public record RopeNode(UUID id, Type type) {
     public enum Type {
         FIXED_ANCHOR,
-        PULLEY
+        PULLEY,
+        MOVABLE_ENDPOINT
     }
 
     public RopeNode(UUID id) {

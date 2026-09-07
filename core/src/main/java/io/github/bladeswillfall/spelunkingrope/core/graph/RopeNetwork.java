@@ -67,9 +67,9 @@ public final class RopeNetwork {
         }
         RopeNode startNode = requireKnownNode(startNodeId);
         RopeNode endNode = requireKnownNode(endNodeId);
-        requirePulleyCapacity(startNode);
+        requireNodeCapacity(startNode);
         if (!endNode.id().equals(startNode.id())) {
-            requirePulleyCapacity(endNode);
+            requireNodeCapacity(endNode);
         }
 
         RopeSpan span = new RopeSpan(spanId, startNodeId, endNodeId, allocatedLength);
@@ -194,9 +194,16 @@ public final class RopeNetwork {
         return node;
     }
 
-    private void requirePulleyCapacity(RopeNode node) {
-        if (node.type() == RopeNode.Type.PULLEY && incidentSpanIds.get(node.id()).size() >= 2) {
-            throw new IllegalArgumentException("A pulley node supports at most two incident spans: " + node.id());
+    private void requireNodeCapacity(RopeNode node) {
+        int maxIncidentSpans = switch (node.type()) {
+            case FIXED_ANCHOR -> Integer.MAX_VALUE;
+            case PULLEY -> 2;
+            case MOVABLE_ENDPOINT -> 1;
+        };
+        if (incidentSpanIds.get(node.id()).size() >= maxIncidentSpans) {
+            throw new IllegalArgumentException(
+                    node.type() + " node supports at most " + maxIncidentSpans + " incident spans: " + node.id()
+            );
         }
     }
 
