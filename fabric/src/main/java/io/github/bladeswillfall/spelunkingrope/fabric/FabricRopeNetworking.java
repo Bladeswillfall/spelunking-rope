@@ -51,10 +51,21 @@ public final class FabricRopeNetworking {
             if (level.isClientSide) {
                 return InteractionResult.SUCCESS;
             }
+
+            ServerPlayer serverPlayer = (ServerPlayer) player;
+            var facing = hookState.getValue(TripWireHookBlock.FACING);
+            if (player.isShiftKeyDown()) {
+                if (!RappelServerController.retrieveAtHook(serverPlayer, hookPos, facing)) {
+                    return InteractionResult.PASS;
+                }
+                broadcastSnapshot(serverPlayer.serverLevel());
+                return InteractionResult.SUCCESS;
+            }
+
             boolean attached = RappelServerController.attach(
-                    (ServerPlayer) player,
+                    serverPlayer,
                     hookPos,
-                    hookState.getValue(TripWireHookBlock.FACING),
+                    facing,
                     FabricRopeNetworking::sendRappelState
             );
             return attached ? InteractionResult.SUCCESS : InteractionResult.PASS;

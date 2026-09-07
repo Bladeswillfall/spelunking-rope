@@ -32,10 +32,20 @@ public final class ForgeRappelEvents {
             return;
         }
 
+        var facing = hookState.getValue(TripWireHookBlock.FACING);
+        if (player.isShiftKeyDown()) {
+            if (RappelServerController.retrieveAtHook(player, event.getPos(), facing)) {
+                ForgeRopeNetworking.broadcastSnapshot(player.serverLevel());
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+            }
+            return;
+        }
+
         if (RappelServerController.attach(
                 player,
                 event.getPos(),
-                hookState.getValue(TripWireHookBlock.FACING),
+                facing,
                 ForgeRopeNetworking::sendRappelState
         )) {
             event.setCancellationResult(InteractionResult.SUCCESS);

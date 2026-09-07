@@ -71,6 +71,33 @@ class FixedRopeSavedDataTest {
     }
 
     @Test
+    void disconnectsSpanWithoutRemovingSharedEndpoint() {
+        FixedRopeSavedData data = new FixedRopeSavedData();
+        BlockAttachment firstAttachment = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        BlockAttachment sharedAttachment = BlockAttachment.atWorld(0.5, 48.5, 0.5);
+        BlockAttachment thirdAttachment = BlockAttachment.atWorld(0.5, 32.5, 0.5);
+        RopeNode first = data.addNode(firstAttachment);
+        RopeNode shared = data.addNode(sharedAttachment);
+        RopeNode third = data.addNode(thirdAttachment);
+        RopeSpan upper = data.connect(first.id(), shared.id(), 16.0);
+        RopeSpan lower = data.connect(shared.id(), third.id(), 16.0);
+
+        assertTrue(data.disconnectAndRemoveOrphanNodes(upper.id()));
+        assertNull(data.attachment(first.id()));
+        assertEquals(sharedAttachment, data.attachment(shared.id()));
+        assertEquals(thirdAttachment, data.attachment(third.id()));
+        assertEquals(Set.of(shared.id(), third.id()), nodeIds(data));
+        assertEquals(1, data.spans().size());
+        assertEquals(lower.id(), data.spans().get(0).id());
+
+        assertTrue(data.disconnectAndRemoveOrphanNodes(lower.id()));
+        assertTrue(data.nodes().isEmpty());
+        assertTrue(data.spans().isEmpty());
+        assertNull(data.attachment(shared.id()));
+        assertNull(data.attachment(third.id()));
+    }
+
+    @Test
     void readsAndFailedMutationsDoNotDirtyFreshData() {
         FixedRopeSavedData data = new FixedRopeSavedData();
         UUID unknown = UUID.randomUUID();
