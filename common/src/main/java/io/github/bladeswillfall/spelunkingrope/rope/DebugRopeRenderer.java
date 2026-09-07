@@ -7,6 +7,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -20,7 +21,7 @@ public final class DebugRopeRenderer {
     private DebugRopeRenderer() {
     }
 
-    public static void render(PoseStack poseStack, VertexConsumer consumer, Camera camera) {
+    public static void render(PoseStack poseStack, VertexConsumer consumer, Camera camera, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         ClientFixedRopeState clientState = ClientFixedRopeState.INSTANCE;
@@ -30,10 +31,6 @@ public final class DebugRopeRenderer {
 
         DenseRopeRuntime runtime = clientState.runtime();
         int spanCount = runtime.size();
-        if (spanCount == 0) {
-            return;
-        }
-
         double[] geometry = runtime.geometryBuffer();
         int coordinatesPerSpan = runtime.coordinatesPerSpan();
         int segments = runtime.segments();
@@ -44,23 +41,21 @@ public final class DebugRopeRenderer {
 
         RappelClientState rappel = RappelClientState.INSTANCE;
         LocalPlayer player = minecraft.player;
-        int activeSlot = rappel.active() && player != null ? runtime.slotOf(rappel.spanId()) : -1;
+        if (rappel.active() && player != null) {
+            double playerX = Mth.lerp(partialTick, player.xOld, player.getX());
+            double playerY = Mth.lerp(partialTick, player.yOld, player.getY());
+            double playerZ = Mth.lerp(partialTick, player.zOld, player.getZ());
+            drawLine(
+                    consumer, matrix, normalMatrix, cameraPosition,
+                    rappel.anchorX(), rappel.anchorY(), rappel.anchorZ(),
+                    playerX, playerY, playerZ
+            );
+            // ponytail: the prototype has no simulated free-tail geometry. A second rigid ray from the
+            // player looked like render ghosting during swings; restore the tail once it has segmented geometry.
+        }
 
         for (int slot = 0; slot < spanCount; slot++) {
-            if (slot == activeSlot) {
-                drawLine(
-                        consumer, matrix, normalMatrix, cameraPosition,
-                        rappel.anchorX(), rappel.anchorY(), rappel.anchorZ(),
-                        player.getX(), player.getY(), player.getZ()
-                );
-                double tailLength = Math.max(0.0, rappel.maxLength() - rappel.currentLength());
-                if (tailLength > 1.0e-4) {
-                    drawLine(
-                            consumer, matrix, normalMatrix, cameraPosition,
-                            player.getX(), player.getY(), player.getZ(),
-                            player.getX(), player.getY() - tailLength, player.getZ()
-                    );
-                }
+            if (rappel.active() && runtime.spanIdAt(slot).equals(rappel.spanId())) {
                 continue;
             }
 
