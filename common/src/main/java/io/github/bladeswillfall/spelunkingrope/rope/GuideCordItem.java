@@ -159,29 +159,48 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
     }
 
     static byte closestDyeId(int rgb) {
-        DyeColor closest = DyeColor.WHITE;
+        return (byte) closestPaletteIndex(rgb, DyePalette.RGB);
+    }
+
+    static int closestPaletteIndex(int rgb, int[] palette) {
+        Objects.requireNonNull(palette, "palette");
+        if (palette.length == 0) {
+            throw new IllegalArgumentException("palette must not be empty");
+        }
+        int closest = 0;
         long closestDistance = Long.MAX_VALUE;
-        // ponytail: only 16 vanilla dye colours and this runs on placement/name lookup, not per rope tick.
-        for (DyeColor candidate : DyeColor.values()) {
-            int candidateRgb = dyeRgb((byte) candidate.getId());
+        for (int index = 0; index < palette.length; index++) {
+            int candidateRgb = palette[index];
             long dr = ((rgb >> 16) & 0xFF) - ((candidateRgb >> 16) & 0xFF);
             long dg = ((rgb >> 8) & 0xFF) - ((candidateRgb >> 8) & 0xFF);
             long db = (rgb & 0xFF) - (candidateRgb & 0xFF);
             long distance = dr * dr + dg * dg + db * db;
             if (distance < closestDistance) {
                 closestDistance = distance;
-                closest = candidate;
+                closest = index;
             }
         }
-        return (byte) closest.getId();
+        return closest;
     }
 
     static int dyeRgb(byte dyeId) {
-        float[] diffuse = DyeColor.byId(dyeId).getTextureDiffuseColors();
-        int red = Math.round(diffuse[0] * 255.0F);
-        int green = Math.round(diffuse[1] * 255.0F);
-        int blue = Math.round(diffuse[2] * 255.0F);
-        return red << 16 | green << 8 | blue;
+        if (dyeId < 0 || dyeId >= DyePalette.RGB.length) {
+            throw new IllegalArgumentException("invalid dye id: " + dyeId);
+        }
+        return DyePalette.RGB[dyeId];
+    }
+
+    private static int[] createDyePalette() {
+        DyeColor[] colors = DyeColor.values();
+        int[] palette = new int[colors.length];
+        for (DyeColor color : colors) {
+            float[] diffuse = color.getTextureDiffuseColors();
+            int red = Math.round(diffuse[0] * 255.0F);
+            int green = Math.round(diffuse[1] * 255.0F);
+            int blue = Math.round(diffuse[2] * 255.0F);
+            palette[color.getId()] = red << 16 | green << 8 | blue;
+        }
+        return palette;
     }
 
     private static Selection readSelection(ItemStack stack) {
@@ -239,6 +258,10 @@ public final class GuideCordItem extends Item implements DyeableLeatherItem {
                 remaining -= batch;
             }
         }
+    }
+
+    private static final class DyePalette {
+        private static final int[] RGB = createDyePalette();
     }
 
     private record Selection(String dimension, long pos) {
