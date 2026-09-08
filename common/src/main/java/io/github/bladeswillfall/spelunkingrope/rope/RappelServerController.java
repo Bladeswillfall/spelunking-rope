@@ -700,8 +700,8 @@ public final class RappelServerController {
     }
 
     private static boolean canOccupy(ServerPlayer player, double x, double y, double z) {
-        AABB target = player.getBoundingBox().move(x - player.getX(), y - player.getY(), z - player.getZ());
-        return player.serverLevel().noCollision(player, target);
+        AABB swept = player.getBoundingBox().expandTowards(x - player.getX(), y - player.getY(), z - player.getZ());
+        return player.serverLevel().noCollision(player, swept);
     }
 
     private static RopeSpan findHookSpan(FixedRopeSavedData data, double anchorX, double anchorY, double anchorZ) {
