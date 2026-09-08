@@ -62,7 +62,7 @@ public final class RappelServerController {
         if (RopeAnchor.facing(hookState) != facing) {
             return false;
         }
-        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookPos, hookState)
+        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookState)
                 ? RopeAnchor.routeAttachment(hookPos, hookState)
                 : RopeAnchor.attachment(hookPos, facing);
         FixedRopeSavedData data = FixedRopeSavedData.get(level);
@@ -259,7 +259,7 @@ public final class RappelServerController {
         if (RopeAnchor.facing(hookState) != facing) {
             return false;
         }
-        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookPos, hookState)
+        BlockAttachment anchor = RopeAnchor.isRouteAnchor(hookState)
                 ? RopeAnchor.routeAttachment(hookPos, hookState)
                 : RopeAnchor.attachment(hookPos, facing);
         FixedRopeSavedData data = FixedRopeSavedData.get(level);
