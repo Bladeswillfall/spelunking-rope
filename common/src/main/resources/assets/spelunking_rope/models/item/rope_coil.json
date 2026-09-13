@@ -1,6 +1,11 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/lead"
-  }
+  "parent":"minecraft:item/handheld",
+  "textures":{"rope":"minecraft:block/red_wool","strap":"minecraft:block/black_wool","particle":"minecraft:block/red_wool"},
+  "elements":[
+    {"from":[2,5,6],"to":[14,7,10],"faces":{"north":{"texture":"#rope"},"south":{"texture":"#rope"},"west":{"texture":"#rope"},"east":{"texture":"#rope"},"up":{"texture":"#rope"},"down":{"texture":"#rope"}}},
+    {"from":[3,7,6],"to":[13,9,10],"faces":{"north":{"texture":"#rope"},"south":{"texture":"#rope"},"west":{"texture":"#rope"},"east":{"texture":"#rope"},"up":{"texture":"#rope"},"down":{"texture":"#rope"}}},
+    {"from":[4,9,6],"to":[12,11,10],"faces":{"north":{"texture":"#rope"},"south":{"texture":"#rope"},"west":{"texture":"#rope"},"east":{"texture":"#rope"},"up":{"texture":"#rope"},"down":{"texture":"#rope"}}},
+    {"from":[7,4,5],"to":[9,12,11],"faces":{"north":{"texture":"#strap"},"south":{"texture":"#strap"},"west":{"texture":"#strap"},"east":{"texture":"#strap"},"up":{"texture":"#strap"},"down":{"texture":"#strap"}}}
+  ],
+  "display":{"gui":{"rotation":[25,225,0],"translation":[0,0,0],"scale":[0.9,0.9,0.9]},"firstperson_righthand":{"rotation":[0,-90,25],"translation":[1,3,1],"scale":[0.7,0.7,0.7]}}
 }
