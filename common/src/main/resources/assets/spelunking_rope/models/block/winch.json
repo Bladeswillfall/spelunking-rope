@@ -1,81 +1,13 @@
 {
-  "textures": {
-    "metal": "minecraft:block/iron_block",
-    "drum": "minecraft:block/stripped_dark_oak_log",
-    "particle": "minecraft:block/iron_block"
-  },
-  "elements": [
-    {
-      "from": [3, 3, 14],
-      "to": [13, 13, 16],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [4, 4, 10],
-      "to": [5, 12, 14],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [11, 4, 10],
-      "to": [12, 12, 14],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [4, 4, 7],
-      "to": [5, 12, 13],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [11, 4, 7],
-      "to": [12, 12, 13],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [5, 5, 8],
-      "to": [11, 11, 12],
-      "faces": {
-        "north": { "texture": "#drum" }, "south": { "texture": "#drum" },
-        "west": { "texture": "#drum" }, "east": { "texture": "#drum" },
-        "up": { "texture": "#drum" }, "down": { "texture": "#drum" }
-      }
-    },
-    {
-      "from": [12, 7, 9],
-      "to": [14, 8, 10],
-      "faces": {
-        "north": { "texture": "#metal" }, "south": { "texture": "#metal" },
-        "west": { "texture": "#metal" }, "east": { "texture": "#metal" },
-        "up": { "texture": "#metal" }, "down": { "texture": "#metal" }
-      }
-    },
-    {
-      "from": [13, 6, 8],
-      "to": [15, 9, 9],
-      "faces": {
-        "north": { "texture": "#drum" }, "south": { "texture": "#drum" },
-        "west": { "texture": "#drum" }, "east": { "texture": "#drum" },
-        "up": { "texture": "#drum" }, "down": { "texture": "#drum" }
-      }
-    }
+  "textures":{"metal":"minecraft:block/deepslate_iron_ore","wood":"minecraft:block/stripped_dark_oak_log","rope":"minecraft:block/red_wool","particle":"minecraft:block/deepslate_iron_ore"},
+  "elements":[
+    {"from":[3,3,14],"to":[13,13,16],"faces":{"north":{"texture":"#metal"},"south":{"texture":"#metal"},"west":{"texture":"#metal"},"east":{"texture":"#metal"},"up":{"texture":"#metal"},"down":{"texture":"#metal"}}},
+    {"from":[4,4,8],"to":[6,12,14],"faces":{"north":{"texture":"#metal"},"south":{"texture":"#metal"},"west":{"texture":"#metal"},"east":{"texture":"#metal"},"up":{"texture":"#metal"},"down":{"texture":"#metal"}}},
+    {"from":[10,4,8],"to":[12,12,14],"faces":{"north":{"texture":"#metal"},"south":{"texture":"#metal"},"west":{"texture":"#metal"},"east":{"texture":"#metal"},"up":{"texture":"#metal"},"down":{"texture":"#metal"}}},
+    {"from":[5,5,8],"to":[11,11,12],"faces":{"north":{"texture":"#wood"},"south":{"texture":"#wood"},"west":{"texture":"#wood"},"east":{"texture":"#wood"},"up":{"texture":"#wood"},"down":{"texture":"#wood"}}},
+    {"from":[5,7,7],"to":[11,9,13],"faces":{"north":{"texture":"#rope"},"south":{"texture":"#rope"},"west":{"texture":"#rope"},"east":{"texture":"#rope"},"up":{"texture":"#rope"},"down":{"texture":"#rope"}}},
+    {"from":[7,2,9],"to":[9,7,11],"faces":{"north":{"texture":"#rope"},"south":{"texture":"#rope"},"west":{"texture":"#rope"},"east":{"texture":"#rope"},"up":{"texture":"#rope"},"down":{"texture":"#rope"}}},
+    {"from":[12,7,9],"to":[14,9,11],"faces":{"north":{"texture":"#metal"},"south":{"texture":"#metal"},"west":{"texture":"#metal"},"east":{"texture":"#metal"},"up":{"texture":"#metal"},"down":{"texture":"#metal"}}},
+    {"from":[13,5,8],"to":[15,8,10],"faces":{"north":{"texture":"#wood"},"south":{"texture":"#wood"},"west":{"texture":"#wood"},"east":{"texture":"#wood"},"up":{"texture":"#wood"},"down":{"texture":"#wood"}}}
   ]
 }
