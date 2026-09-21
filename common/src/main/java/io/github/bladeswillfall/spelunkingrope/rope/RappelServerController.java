@@ -47,6 +47,13 @@ public final class RappelServerController {
     private RappelServerController() {
     }
 
+    static boolean isRappelling(ServerPlayer player) {
+        Session session = SESSIONS.get(player.getUUID());
+        return session != null
+                && session.level == player.serverLevel()
+                && session.mode == RappelPackets.MODE_RAPPEL;
+    }
+
     public static boolean attach(
             ServerPlayer player,
             BlockPos hookPos,
