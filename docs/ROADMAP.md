@@ -57,8 +57,9 @@ The roadmap is intentionally ordered around proving the reusable rope engine bef
 - [x] Shared total-rope-length solver
 - [x] Movable endpoint
 - [x] Manual winch
-- [ ] Player/cargo hauling
-- [ ] Persistence tests for routed systems
+- [x] Player hauling
+- [ ] Cargo hauling
+- [x] Persistence tests for routed systems
 
 ## M5 — Ecosystem integrations
 
