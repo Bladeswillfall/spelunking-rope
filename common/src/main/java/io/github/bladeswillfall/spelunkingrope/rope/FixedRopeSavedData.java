@@ -4,6 +4,7 @@ import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNetwork;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
 import io.github.bladeswillfall.spelunkingrope.core.graph.SharedRopeLengthSolver;
+import io.github.bladeswillfall.spelunkingrope.core.traversal.PolylineTraversal;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -232,6 +233,18 @@ public final class FixedRopeSavedData extends SavedData {
 
         network.replaceSpanLength(first.id(), transfer.firstLength());
         network.replaceSpanLength(second.id(), transfer.secondLength());
+        remapCargoBindings(
+                first.id(),
+                transfer.firstLength(),
+                transfer.firstLength() - first.allocatedLength(),
+                first.startNodeId().equals(pulleyNodeId)
+        );
+        remapCargoBindings(
+                second.id(),
+                transfer.secondLength(),
+                transfer.secondLength() - second.allocatedLength(),
+                second.startNodeId().equals(pulleyNodeId)
+        );
         setDirty();
         return transfer;
     }
@@ -353,6 +366,12 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.replaceSpanLength(preview.spanId(), preview.newLength());
+        remapCargoBindings(
+                preview.spanId(),
+                preview.newLength(),
+                preview.deployedLengthDelta(),
+                preview.winchAtStart()
+        );
         setDirty();
     }
 
@@ -497,6 +516,12 @@ public final class FixedRopeSavedData extends SavedData {
                 allocatedLength
         );
         attachments.put(current.endNodeId(), end);
+        remapCargoBindings(
+                current.id(),
+                allocatedLength,
+                allocatedLength - current.allocatedLength(),
+                false
+        );
         setDirty();
         return replacement;
     }
@@ -681,6 +706,29 @@ public final class FixedRopeSavedData extends SavedData {
 
     private void removeCargoBindingsForSpan(UUID spanId) {
         cargoBindings.values().removeIf(binding -> binding.spanId().equals(spanId));
+    }
+
+    private void remapCargoBindings(
+            UUID spanId,
+            double newLength,
+            double deployedLengthDelta,
+            boolean changedAtStart
+    ) {
+        cargoBindings.replaceAll((entityId, binding) -> {
+            if (!binding.spanId().equals(spanId)) {
+                return binding;
+            }
+            return new CargoBinding(
+                    entityId,
+                    spanId,
+                    PolylineTraversal.remapMaterialDistance(
+                            binding.materialDistance(),
+                            newLength,
+                            deployedLengthDelta,
+                            changedAtStart
+                    )
+            );
+        });
     }
 
     private void removeNodeIfOrphan(UUID nodeId) {
