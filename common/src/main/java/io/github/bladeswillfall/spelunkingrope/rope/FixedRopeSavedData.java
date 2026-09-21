@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class FixedRopeSavedData extends SavedData {
-    static final int SCHEMA_VERSION = 3;
+    static final int SCHEMA_VERSION = 4;
 
     enum WinchAdjustment {
         NO_ROPE,
@@ -41,6 +41,9 @@ public final class FixedRopeSavedData extends SavedData {
         }
     }
 
+    record CargoBinding(UUID entityId, UUID spanId, double materialDistance) {
+    }
+
     private static final String DATA_NAME = "spelunking_rope";
     private static final String TAG_SCHEMA_VERSION = "schema_version";
     private static final String TAG_NODES = "nodes";
@@ -58,11 +61,16 @@ public final class FixedRopeSavedData extends SavedData {
     private static final String TAG_LOCAL_X = "local_x";
     private static final String TAG_LOCAL_Y = "local_y";
     private static final String TAG_LOCAL_Z = "local_z";
+    private static final String TAG_CARGO = "cargo";
+    private static final String TAG_ENTITY = "entity";
+    private static final String TAG_SPAN = "span";
+    private static final String TAG_DISTANCE = "distance";
 
     private final RopeNetwork network = new RopeNetwork();
     private final Map<UUID, BlockAttachment> attachments = new HashMap<>();
     // ponytail: structural spans are the common case; only guide spans pay for metadata storage.
     private final Map<UUID, Byte> guideColors = new HashMap<>();
+    private final Map<UUID, CargoBinding> cargoBindings = new HashMap<>();
 
     public static FixedRopeSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
@@ -155,17 +163,18 @@ public final class FixedRopeSavedData extends SavedData {
     }
 
     public boolean removeNode(UUID nodeId) {
-        List<UUID> incidentGuideSpans = new ArrayList<>();
+        List<UUID> incidentSpans = new ArrayList<>();
         for (RopeSpan span : network.spans()) {
-            if ((span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) && isGuideLine(span.id())) {
-                incidentGuideSpans.add(span.id());
+            if (span.startNodeId().equals(nodeId) || span.endNodeId().equals(nodeId)) {
+                incidentSpans.add(span.id());
             }
         }
         if (!network.removeNode(nodeId)) {
             return false;
         }
-        for (UUID spanId : incidentGuideSpans) {
+        for (UUID spanId : incidentSpans) {
             guideColors.remove(spanId);
+            removeCargoBindingsForSpan(spanId);
         }
         attachments.remove(nodeId);
         setDirty();
@@ -355,11 +364,53 @@ public final class FixedRopeSavedData extends SavedData {
         return preview.adjustment();
     }
 
+    boolean bindCargo(UUID entityId, UUID spanId, double materialDistance) {
+        Objects.requireNonNull(entityId, "entityId");
+        Objects.requireNonNull(spanId, "spanId");
+        RopeSpan span = span(spanId);
+        if (span == null) {
+            throw new IllegalArgumentException("Unknown structural rope span: " + spanId);
+        }
+        if (!Double.isFinite(materialDistance) || materialDistance < 0.0) {
+            throw new IllegalArgumentException("materialDistance must be finite and non-negative");
+        }
+        double tolerance = 1.0e-9 * Math.max(1.0, span.allocatedLength());
+        if (materialDistance > span.allocatedLength() + tolerance) {
+            throw new IllegalArgumentException("materialDistance exceeds span length");
+        }
+
+        CargoBinding next = new CargoBinding(entityId, spanId, Math.min(materialDistance, span.allocatedLength()));
+        if (next.equals(cargoBindings.get(entityId))) {
+            return false;
+        }
+        cargoBindings.put(entityId, next);
+        setDirty();
+        return true;
+    }
+
+    boolean unbindCargo(UUID entityId) {
+        Objects.requireNonNull(entityId, "entityId");
+        if (cargoBindings.remove(entityId) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    CargoBinding cargoBinding(UUID entityId) {
+        return cargoBindings.get(Objects.requireNonNull(entityId, "entityId"));
+    }
+
+    List<CargoBinding> cargoBindings() {
+        return List.copyOf(cargoBindings.values());
+    }
+
     public boolean disconnect(UUID spanId) {
         if (!network.disconnect(spanId)) {
             return false;
         }
         guideColors.remove(spanId);
+        removeCargoBindingsForSpan(spanId);
         setDirty();
         return true;
     }
@@ -371,6 +422,7 @@ public final class FixedRopeSavedData extends SavedData {
         }
 
         network.disconnect(current.id());
+        removeCargoBindingsForSpan(current.id());
         removeNodeIfOrphan(current.startNodeId());
         if (!current.endNodeId().equals(current.startNodeId())) {
             removeNodeIfOrphan(current.endNodeId());
@@ -511,6 +563,16 @@ public final class FixedRopeSavedData extends SavedData {
             spans.add(spanTag);
         }
         tag.put(TAG_SPANS, spans);
+
+        ListTag cargo = new ListTag();
+        for (CargoBinding binding : cargoBindings.values()) {
+            CompoundTag cargoTag = new CompoundTag();
+            cargoTag.putUUID(TAG_ENTITY, binding.entityId());
+            cargoTag.putUUID(TAG_SPAN, binding.spanId());
+            cargoTag.putDouble(TAG_DISTANCE, binding.materialDistance());
+            cargo.add(cargoTag);
+        }
+        tag.put(TAG_CARGO, cargo);
         return tag;
     }
 
@@ -555,6 +617,19 @@ public final class FixedRopeSavedData extends SavedData {
                 requireGuideColor(color);
                 data.guideColors.put(span.id(), color);
             }
+        }
+
+        if (version >= 4) {
+            ListTag cargo = tag.getList(TAG_CARGO, Tag.TAG_COMPOUND);
+            for (int i = 0; i < cargo.size(); i++) {
+                CompoundTag cargoTag = cargo.getCompound(i);
+                data.bindCargo(
+                        cargoTag.getUUID(TAG_ENTITY),
+                        cargoTag.getUUID(TAG_SPAN),
+                        cargoTag.getDouble(TAG_DISTANCE)
+                );
+            }
+            data.setDirty(false);
         }
         return data;
     }
@@ -602,6 +677,10 @@ public final class FixedRopeSavedData extends SavedData {
             }
         }
         return null;
+    }
+
+    private void removeCargoBindingsForSpan(UUID spanId) {
+        cargoBindings.values().removeIf(binding -> binding.spanId().equals(spanId));
     }
 
     private void removeNodeIfOrphan(UUID nodeId) {
