@@ -83,7 +83,7 @@ See [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).
 
 ## Project status
 
-**Foundation bootstrap.** The shared Fabric/Forge 1.20.1 project now compiles and the dedicated-server bootstrap is continuously smoke-tested. Gameplay implementation has not started yet.
+**M4 rope-engineering closeout.** M1 rope engine, M2 spelunking, and M3 route infrastructure are implemented. M4 now includes explicit pulleys, conserved routed rope length, movable endpoints, manual winching, and collision-safe player hauling. Routed topology, transferred lengths, movable endpoints, and winch state all have save/load coverage; cargo hauling is the remaining M4 gameplay item before M5 Create integration.
 
 ## Repository modules
 
