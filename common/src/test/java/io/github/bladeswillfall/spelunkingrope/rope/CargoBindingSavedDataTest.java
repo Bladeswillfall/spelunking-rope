@@ -1,5 +1,6 @@
 package io.github.bladeswillfall.spelunkingrope.rope;
 
+import io.github.bladeswillfall.spelunkingrope.core.graph.RopeNode;
 import io.github.bladeswillfall.spelunkingrope.core.graph.RopeSpan;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
@@ -115,6 +116,67 @@ class CargoBindingSavedDataTest {
 
         FixedRopeSavedData loaded = FixedRopeSavedData.load(data.save(new CompoundTag()));
         assertTrue(loaded.cargoBindings().isEmpty());
+    }
+
+    @Test
+    void winchLengthChangesRemapCargoMaterialDistance() {
+        BlockAttachment winch = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        BlockAttachment anchor = BlockAttachment.atWorld(10.5, 64.5, 0.5);
+        UUID startCargo = UUID.randomUUID();
+        FixedRopeSavedData startWinch = new FixedRopeSavedData();
+        RopeSpan startSpan = startWinch.addRouteRope(
+                winch, RopeNode.Type.WINCH,
+                anchor, RopeNode.Type.FIXED_ANCHOR,
+                12.0
+        );
+        startWinch.bindCargo(startCargo, startSpan.id(), 6.0);
+
+        assertEquals(FixedRopeSavedData.WinchAdjustment.CHANGED, startWinch.adjustWinch(winch, -1.0));
+        assertEquals(5.0, startWinch.cargoBinding(startCargo).materialDistance(), 1.0e-12);
+
+        UUID endCargo = UUID.randomUUID();
+        FixedRopeSavedData endWinch = new FixedRopeSavedData();
+        RopeSpan endSpan = endWinch.addRouteRope(
+                anchor, RopeNode.Type.FIXED_ANCHOR,
+                winch, RopeNode.Type.WINCH,
+                12.0
+        );
+        endWinch.bindCargo(endCargo, endSpan.id(), 6.0);
+
+        assertEquals(FixedRopeSavedData.WinchAdjustment.CHANGED, endWinch.adjustWinch(winch, -1.0));
+        assertEquals(6.0, endWinch.cargoBinding(endCargo).materialDistance(), 1.0e-12);
+    }
+
+    @Test
+    void pulleyTransferRemapsOnlyThePulleySideMaterialCoordinate() {
+        FixedRopeSavedData data = new FixedRopeSavedData();
+        BlockAttachment left = BlockAttachment.atWorld(0.5, 64.5, 0.5);
+        BlockAttachment pulley = BlockAttachment.atWorld(8.5, 60.5, 0.5);
+        BlockAttachment right = BlockAttachment.atWorld(16.5, 64.5, 0.5);
+        RopeSpan first = data.addRouteRope(
+                left, RopeNode.Type.FIXED_ANCHOR,
+                pulley, RopeNode.Type.PULLEY,
+                10.0
+        );
+        RopeSpan second = data.addRouteRope(
+                pulley, RopeNode.Type.PULLEY,
+                right, RopeNode.Type.FIXED_ANCHOR,
+                12.0
+        );
+        UUID firstCargo = UUID.randomUUID();
+        UUID secondCargo = UUID.randomUUID();
+        data.bindCargo(firstCargo, first.id(), 6.0);
+        data.bindCargo(secondCargo, second.id(), 6.0);
+        UUID pulleyId = data.nodes().stream()
+                .filter(node -> node.type() == RopeNode.Type.PULLEY)
+                .findFirst()
+                .orElseThrow()
+                .id();
+
+        data.transferAcrossPulley(pulleyId, first.id(), 8.0, 9.0, 2.5);
+
+        assertEquals(6.0, data.cargoBinding(firstCargo).materialDistance(), 1.0e-12);
+        assertEquals(3.5, data.cargoBinding(secondCargo).materialDistance(), 1.0e-12);
     }
 
     @Test
